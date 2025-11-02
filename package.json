@@ -1,6 +1,6 @@
 {
 	"name": "json-diff-merge-editor",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "A powerful React component for 3-way JSON merging with semantic comparison, built on Monaco Editor. Features schema-aware conflict detection, interactive resolution, and real-time validation.",
 	"type": "module",
 	"author": "Kirill Ivanov <v.b.ingram@gmail.com>",

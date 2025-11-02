@@ -1,8 +1,5 @@
 # Source files
 src/
-*.ts
-*.tsx
-!dist/**/*.d.ts
 
 # Development files
 .vscode/
