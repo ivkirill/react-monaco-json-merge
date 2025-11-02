@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Clean dist folder
+        run: rm -rf dist
+
       - name: Build demo
         run: npm run build:demo
         env:
@@ -62,6 +65,12 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
         continue-on-error: true
+      
+      - name: Display deployment URL
+        if: steps.deployment.outcome == 'success'
+        run: |
+          echo "::notice::?? Deployment successful!"
+          echo "::notice::Your site is available at: https://ivkirill.github.io/react-monaco-json-merge/"
       
       - name: Check deployment status
         if: steps.deployment.outcome == 'failure'

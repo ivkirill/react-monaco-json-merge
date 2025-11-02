@@ -9,6 +9,8 @@
 [![Vite](https://img.shields.io/badge/Vite-6.4.1-646CFF?logo=vite)](https://vite.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+**[🌐 Live Demo](https://ivkirill.github.io/react-monaco-json-merge/)**
+
 </div>
 
 ## ✨ Features
@@ -35,6 +37,8 @@
 - **TypeScript First** - Fully typed with comprehensive type definitions
 
 ## 🚀 Quick Start
+
+> **📺 [Try the Live Demo](https://ivkirill.github.io/react-monaco-json-merge/)** - See the editor in action!
 
 ### Installation
 
