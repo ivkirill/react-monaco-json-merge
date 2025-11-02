@@ -42,11 +42,13 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        continue-on-error: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
+        continue-on-error: true
 
   deploy:
     environment:
@@ -54,7 +56,19 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
+    if: success() || failure()
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+      
+      - name: Check deployment status
+        if: steps.deployment.outcome == 'failure'
+        run: |
+          echo "::warning::GitHub Pages deployment failed. Please ensure:"
+          echo "1. Go to Repository Settings ? Pages"
+          echo "2. Under 'Source', select 'GitHub Actions'"
+          echo "3. Save the settings"
+          echo "4. Re-run this workflow"
+          exit 1
