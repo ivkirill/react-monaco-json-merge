@@ -4,8 +4,10 @@ import path from 'path';
 import { resolve } from 'path';
 
 const isLibraryBuild = process.env.BUILD_MODE === 'lib';
+const base = process.env.GITHUB_PAGES ? '/react-monaco-json-merge/' : '/';
 
 export default defineConfig({
+	base,
 	plugins: [react()],
 	resolve: {
 		alias: {

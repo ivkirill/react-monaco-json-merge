@@ -59,6 +59,7 @@
 		"build": "npm run build:types && npm run build:lib",
 		"build:types": "tsc -p tsconfig.build.json",
 		"build:lib": "cross-env BUILD_MODE=lib node_modules/.bin/vite build",
+		"build:demo": "cross-env GITHUB_PAGES=true vite build",
 		"preview": "vite preview",
 		"type-check": "tsc --noEmit",
 		"type-check:watch": "tsc --noEmit --watch",

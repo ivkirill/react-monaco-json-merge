@@ -1153,19 +1153,22 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 		}
 	}, [options, theme, original, modified, base, showResultColumn, baseIndex, isMonacoMounting, computeDiffs, onMount, labels]);
 
-	// Detect showResultColumn, baseIndex, or comparisonMode changes and trigger recreation
+	// Detect showResultColumn, baseIndex, comparisonMode, or base changes and trigger recreation
 	const prevShowResultRef = useRef(showResultColumn);
 	const prevBaseIndexRef = useRef(baseIndex);
 	const prevComparisonModeRef = useRef(comparisonMode);
+	const prevBaseRef = useRef(base);
 	useEffect(() => {
 		const showResultChanged = prevShowResultRef.current !== showResultColumn;
 		const baseIndexChanged = prevBaseIndexRef.current !== baseIndex;
 		const comparisonModeChanged = prevComparisonModeRef.current !== comparisonMode;
+		const baseChanged = prevBaseRef.current !== base;
 
-		if ((showResultChanged || baseIndexChanged || comparisonModeChanged) && preventCreation.current) {
+		if ((showResultChanged || baseIndexChanged || comparisonModeChanged || baseChanged) && preventCreation.current) {
 			prevShowResultRef.current = showResultColumn;
 			prevBaseIndexRef.current = baseIndex;
 			prevComparisonModeRef.current = comparisonMode;
+			prevBaseRef.current = base;
 
 			// Clear gutter views
 			gutterViewsRef.current.forEach((view) => {
@@ -1200,7 +1203,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 			preventCreation.current = false;
 			setEditorKey((prev) => prev + 1);
 		}
-	}, [showResultColumn, baseIndex, comparisonMode]);
+	}, [showResultColumn, baseIndex, comparisonMode, base]);
 
 	// Create editor when ready
 	useEffect(() => {
@@ -1208,6 +1211,25 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 			createEditor();
 		}
 	}, [isMonacoMounting, createEditor]);
+
+	// Update editor options dynamically without recreating the editor
+	useEffect(() => {
+		if (!isEditorReady || !options) return;
+
+		// Update all editor instances
+		if (input1EditorRef.current) {
+			input1EditorRef.current.updateOptions(options);
+		}
+		if (input2EditorRef.current) {
+			input2EditorRef.current.updateOptions(options);
+		}
+		if (baseEditorRef.current) {
+			baseEditorRef.current.updateOptions(options);
+		}
+		if (resultEditorRef.current) {
+			resultEditorRef.current.updateOptions(options);
+		}
+	}, [options, isEditorReady]);
 
 	// Apply decorations when conflicts change
 	useEffect(() => {
