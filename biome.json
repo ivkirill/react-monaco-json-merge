@@ -1,0 +1,89 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.3.2/schema.json",
+	"vcs": {
+		"enabled": false,
+		"clientKind": "git",
+		"useIgnoreFile": false
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"**/*.ts",
+			"**/*.tsx",
+			"**/*.js",
+			"**/*.jsx",
+			"**/*.json",
+			"!!**/dist",
+			"!!**/*.config.*s",
+			"!!**/coverage",
+			"!!**/node_modules",
+			"!!**/.vscode",
+			"!!**/.husky",
+			"!!**/*.log"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": false,
+		"indentStyle": "tab",
+		"indentWidth": 4,
+		"lineEnding": "lf",
+		"lineWidth": 140,
+		"attributePosition": "auto"
+	},
+	"javascript": {
+		"formatter": {
+			"arrowParentheses": "always",
+			"bracketSameLine": false,
+			"bracketSpacing": true,
+			"jsxQuoteStyle": "double",
+			"quoteProperties": "asNeeded",
+			"semicolons": "always",
+			"trailingCommas": "all"
+		},
+		"assist": {
+			"enabled": true
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"complexity": {
+				"noForEach": "off"
+			},
+			"correctness": {
+				"noUnusedImports": "error",
+				"noUnusedVariables": "error"
+			},
+			"style": {
+				"useLiteralEnumMembers": {
+					"level": "off",
+					"options": {}
+				},
+				"useImportType": {
+					"level": "warn",
+					"fix": "safe",
+					"options": {}
+				},
+				"useExportType": {
+					"level": "warn",
+					"fix": "safe",
+					"options": {}
+				}
+			},
+			"suspicious": {
+				"noExplicitAny": "error",
+				"useIterableCallbackReturn": "error"
+			},
+			"a11y": {
+				"useKeyWithClickEvents": "off"
+			}
+		}
+	},
+	"json": {
+		"formatter": {
+			"trailingCommas": "none"
+		}
+	}
+}

@@ -1,0 +1,115 @@
+{
+	"name": "json-diff-merge-editor",
+	"version": "1.0.0",
+	"description": "A powerful React component for 3-way JSON merging with semantic comparison, built on Monaco Editor. Features schema-aware conflict detection, interactive resolution, and real-time validation.",
+	"type": "module",
+	"author": "Kirill Ivanov <v.b.ingram@gmail.com>",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ivkirill/json-diff-merge-editor.git"
+	},
+	"bugs": {
+		"url": "https://github.com/ivkirill/json-diff-merge-editor/issues"
+	},
+	"homepage": "https://github.com/ivkirill/json-diff-merge-editor#readme",
+	"keywords": [
+		"json",
+		"diff",
+		"merge",
+		"editor",
+		"monaco",
+		"monaco-editor",
+		"react",
+		"3-way-merge",
+		"three-way-merge",
+		"json-schema",
+		"json-patch",
+		"conflict-resolution",
+		"semantic-diff",
+		"code-editor",
+		"typescript",
+		"rfc6902"
+	],
+	"engines": {
+		"node": ">=20.19.0",
+		"npm": ">=10.0.0"
+	},
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.cjs"
+		},
+		"./style.css": "./dist/style.css"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"sideEffects": [
+		"*.css"
+	],
+	"scripts": {
+		"dev": "vite",
+		"build": "npm run build:types && npm run build:lib",
+		"build:types": "tsc -p tsconfig.build.json",
+		"build:lib": "cross-env BUILD_MODE=lib node_modules/.bin/vite build",
+		"preview": "vite preview",
+		"type-check": "tsc --noEmit",
+		"type-check:watch": "tsc --noEmit --watch",
+		"lint": "biome check --diagnostic-level=error .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"test": "vitest",
+		"test:ui": "vitest --ui",
+		"test:run": "vitest run",
+		"test:watch": "vitest --watch",
+		"test:coverage": "vitest run --coverage",
+		"validate": "npm run type-check && npm run lint -- --max-diagnostics=200 && npm run test:run",
+		"clean": "rm -rf dist coverage node_modules/.vite",
+		"clean:all": "npm run clean && rm -rf node_modules package-lock.json",
+		"prepare": "husky"
+	},
+	"lint-staged": {
+		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
+			"biome check --write --organize-imports-enabled=true",
+			"biome format --write --files-ignore-unknown=true",
+			"biome lint --write"
+		]
+	},
+	"peerDependencies": {
+		"react": "^18.0.0 || ^19.0.0",
+		"react-dom": "^18.0.0 || ^19.0.0"
+	},
+	"dependencies": {
+		"@monaco-editor/loader": "^1.4.0",
+		"fast-deep-equal": "^3.1.3",
+		"fast-json-patch": "^3.1.1",
+		"jsonc-parser": "^3.3.1",
+		"monaco-editor": "^0.54.0",
+		"sort-keys": "^6.0.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.2",
+		"@types/node": "^22.10.5",
+		"@types/react": "^19.2.2",
+		"@types/react-dom": "^19.2.2",
+		"@vitejs/plugin-react": "^5.1.0",
+		"@vitest/coverage-v8": "^4.0.6",
+		"@vitest/ui": "^4.0.6",
+		"cross-env": "^7.0.3",
+		"husky": "^9.1.7",
+		"jsdom": "^26.0.1",
+		"lint-staged": "^16.2.6",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0",
+		"typescript": "^5.7.3",
+		"vite": "^6.4.1",
+		"vitest": "^4.0.6"
+	}
+}

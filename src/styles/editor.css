@@ -1,0 +1,42 @@
+.monaco-diff-editor .monaco-editor .codicon-diff-insert,
+.monaco-diff-editor .monaco-editor .codicon-diff-remove {
+    left: 44px !important;
+    right: initial !important;
+}
+
+.monaco-diff-editor.side-by-side .monaco-editor .codicon-diff-remove {
+    left: 62px !important;
+}
+
+/* Hide lightbulb (code actions) icon in diff editor */
+.monaco-diff-editor .lightbulb-glyph,
+.monaco-diff-editor .codicon-lightbulb,
+.monaco-diff-editor .lightBulbWidget {
+    display: none !important;
+}
+
+/* Conflict issue line highlighting in result column */
+.monaco-editor .conflict-issue-line.conflict-issue-error {
+    background-color: rgba(255, 0, 0, 0.1);
+}
+
+.monaco-editor .conflict-issue-line.conflict-issue-warning {
+    background-color: rgba(255, 170, 0, 0.1);
+}
+
+.monaco-editor .conflict-issue-line.conflict-issue-smart-merge {
+    background-color: rgba(0, 150, 255, 0.1);
+}
+
+/* Light theme overrides */
+.monaco-editor.vs .conflict-issue-line.conflict-issue-error {
+    background-color: rgba(255, 0, 0, 0.05);
+}
+
+.monaco-editor.vs .conflict-issue-line.conflict-issue-warning {
+    background-color: rgba(255, 136, 0, 0.05);
+}
+
+.monaco-editor.vs .conflict-issue-line.conflict-issue-smart-merge {
+    background-color: rgba(0, 120, 212, 0.05);
+}

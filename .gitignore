@@ -1,0 +1,17 @@
+.idea
+idea
+dist
+.env
+.env.local
+.DS_Store
+db.sqlite
+npm-*.log
+yarn-*.log
+node_modules
+.npmrc
+*.tsbuildinfo
+*.log
+temp
+.env.local
+coverage
+.vscode
