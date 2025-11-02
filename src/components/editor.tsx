@@ -7,8 +7,8 @@ import { createAllDecorations, type DecorationConfig } from "../utils/editorDeco
 import { computeDiffsJsonPatch } from "../utils/jsonPatchDiff";
 import "../styles/editor.css";
 
-// Simple Loader component
-const Loader = () => <div style={{ padding: "20px", textAlign: "center", color: "#888" }}>Loading Monaco Editor...</div>;
+// Default Loader component
+const DefaultLoader = () => <div style={{ padding: "20px", textAlign: "center", color: "#888" }}>Loading Monaco Editor...</div>;
 
 const ISSUE_ICON = "⚠";
 
@@ -26,7 +26,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 		width = "100%",
 		height = "100%",
 		className,
-		wrapperProps = {},
+		loading,
 		onMount,
 		onMergeResolve,
 		showResultColumn = false,
@@ -34,7 +34,6 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 		comparisonMode = "split",
 		schema,
 		patches,
-		threeWayDiffColors,
 		labels,
 	} = props;
 
@@ -607,7 +606,6 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 				}
 
 				checkboxDiv.style.top = `${effectiveCheckboxTop + 5}px`;
-				console.log("checkboxDiv.style.top", checkboxDiv.style.top);
 			}
 		},
 		[toggleInputState, renderCheckbox],
@@ -716,18 +714,18 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 		// Detect if theme is dark or light
 		const isDark = theme === "vs-dark" || (typeof theme === "string" && theme.includes("dark"));
 
-		// Use Monaco's merge editor theme colors (with fallbacks)
-		const conflictColor =
-			threeWayDiffColors?.conflict?.[isDark ? "dark" : "light"] ||
-			getThemeColor("mergeEditor.change.background", isDark ? "rgba(255, 166, 0, 0.2)" : "rgba(255, 166, 0, 0.15)");
+		// Use Monaco's merge editor theme colors
+		const conflictColor = getThemeColor("mergeEditor.change.background", isDark ? "rgba(255, 166, 0, 0.2)" : "rgba(255, 166, 0, 0.15)");
 
-		const changeColor =
-			threeWayDiffColors?.change?.[isDark ? "dark" : "light"] ||
-			getThemeColor("diffEditor.insertedTextBackground", isDark ? "rgba(155, 185, 85, 0.2)" : "rgba(155, 185, 85, 0.15)");
+		const changeColor = getThemeColor(
+			"diffEditor.insertedTextBackground",
+			isDark ? "rgba(155, 185, 85, 0.2)" : "rgba(155, 185, 85, 0.15)",
+		);
 
-		const baseColor =
-			threeWayDiffColors?.base?.[isDark ? "dark" : "light"] ||
-			getThemeColor("mergeEditor.changeBase.background", isDark ? "rgba(255, 100, 100, 0.2)" : "rgba(255, 100, 100, 0.15)");
+		const baseColor = getThemeColor(
+			"mergeEditor.changeBase.background",
+			isDark ? "rgba(255, 100, 100, 0.2)" : "rgba(255, 100, 100, 0.15)",
+		);
 
 		// Overview ruler colors - use theme colors with more opacity
 		const conflictOverviewColor = getThemeColor(
@@ -780,15 +778,17 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 		}
 
 		// Compute colors for different conflict types
-		const sameChangeColor =
-			threeWayDiffColors?.sameChange?.[isDark ? "dark" : "light"] ||
-			getThemeColor("diffEditor.insertedTextBackground", isDark ? "rgba(100, 100, 255, 0.15)" : "rgba(100, 100, 255, 0.1)");
+		const sameChangeColor = getThemeColor(
+			"diffEditor.insertedTextBackground",
+			isDark ? "rgba(100, 100, 255, 0.15)" : "rgba(100, 100, 255, 0.1)",
+		);
 
 		// INPUT1_ONLY means theirs added something (incoming addition that's accepted)
 		// Should be green (addition color), same as input2Only
-		const input1OnlyColor =
-			threeWayDiffColors?.input1Only?.[isDark ? "dark" : "light"] ||
-			getThemeColor("diffEditor.insertedTextBackground", isDark ? "rgba(155, 185, 85, 0.2)" : "rgba(155, 185, 85, 0.15)");
+		const input1OnlyColor = getThemeColor(
+			"diffEditor.insertedTextBackground",
+			isDark ? "rgba(155, 185, 85, 0.2)" : "rgba(155, 185, 85, 0.15)",
+		);
 
 		styleEl.textContent = `
       /* True conflict - both sides changed differently (orange/amber) */
@@ -797,12 +797,17 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
         background-color: ${conflictColor};
       }
 
-      /* Single-side change (green for input2/ours, red for input1/theirs) */
+      /* Single-side change (green for input2/ours, orange for input1/theirs in 3-way) */
       .monaco-editor .merge-change-incoming {
         background-color: ${input1OnlyColor};
       }
       .monaco-editor .merge-change-current {
         background-color: ${changeColor};
+      }
+
+      /* 2-way diff mode: red for deletions (input1 column) */
+      .monaco-editor .merge-2way-deletion {
+        background-color: ${baseColor};
       }
 
       /* Same change on both sides (blue/purple) */
@@ -937,7 +942,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 			}
 			baseDecorationsRef.current.set(baseDecorations);
 		}
-	}, [conflicts, theme, threeWayDiffColors, getThemeColor]);
+	}, [conflicts, theme, getThemeColor]);
 
 	const createEditor = useCallback(() => {
 		if (!preventCreation.current && containerRef.current && monacoRef.current && !isMonacoMounting) {
@@ -1341,8 +1346,8 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 	}, []);
 
 	if (isMonacoMounting || !isEditorReady) {
-		return <Loader />;
+		return <>{loading ?? <DefaultLoader />}</>;
 	}
 
-	return <div ref={containerRef} style={{ width, height }} className={className} {...wrapperProps} />;
+	return <div ref={containerRef} style={{ width, height }} className={className} />;
 }

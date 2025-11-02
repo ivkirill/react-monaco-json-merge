@@ -1,4 +1,4 @@
-# JSON Diff Merge Editor
+# React Monaco JSON Merge
 
 <div align="center">
 
@@ -39,14 +39,14 @@
 ### Installation
 
 ```bash
-npm install json-diff-merge-editor
+npm install react-monaco-json-merge
 ```
 
 ### Basic Usage
 
 ```tsx
-import { JsonDiffMergeEditor } from 'json-diff-merge-editor';
-import 'json-diff-merge-editor/dist/style.css';
+import { JsonDiffMergeEditor } from 'react-monaco-json-merge';
+import 'react-monaco-json-merge/dist/style.css';
 
 function App() {
   const base = JSON.stringify({ name: "John", age: 30 }, null, 2);
@@ -93,8 +93,8 @@ function App() {
 ### Advanced Example
 
 ```tsx
-import { JsonDiffMergeEditor } from 'json-diff-merge-editor';
-import type { JSONSchema } from 'json-diff-merge-editor';
+import { JsonDiffMergeEditor } from 'react-monaco-json-merge';
+import type { JSONSchema } from 'react-monaco-json-merge';
 
 const schema: JSONSchema = {
   type: "object",
@@ -194,7 +194,7 @@ When both checkboxes are selected for a `TRUE_CONFLICT`:
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd json-diff-merge-editor
+cd react-monaco-json-merge
 
 # Install dependencies
 npm install
@@ -231,7 +231,7 @@ npm run clean            # Remove build artifacts
 ### Project Structure
 
 ```
-json-diff-merge-editor/
+react-monaco-json-merge/
 ├── src/
 │   ├── components/
 │   │   └── editor.tsx          # Main JsonDiffMergeEditor component

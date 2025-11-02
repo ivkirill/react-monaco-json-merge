@@ -1,5 +1,5 @@
 {
-	"name": "json-diff-merge-editor",
+	"name": "react-monaco-json-merge",
 	"version": "1.0.1",
 	"description": "A powerful React component for 3-way JSON merging with semantic comparison, built on Monaco Editor. Features schema-aware conflict detection, interactive resolution, and real-time validation.",
 	"type": "module",
@@ -7,12 +7,12 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/ivkirill/json-diff-merge-editor.git"
+		"url": "https://github.com/ivkirill/react-monaco-json-merge.git"
 	},
 	"bugs": {
-		"url": "https://github.com/ivkirill/json-diff-merge-editor/issues"
+		"url": "https://github.com/ivkirill/react-monaco-json-merge/issues"
 	},
-	"homepage": "https://github.com/ivkirill/json-diff-merge-editor#readme",
+	"homepage": "https://github.com/ivkirill/react-monaco-json-merge#readme",
 	"keywords": [
 		"json",
 		"diff",

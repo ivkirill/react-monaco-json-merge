@@ -69,11 +69,11 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 		}
 		case ConflictTypeEnum.INPUT1_ONLY:
 			// Only input1 has content (removed in input2)
-			// In 2-column mode: highlight input1 (shows what was removed)
+			// In 2-column mode: highlight input1 as deletion (red)
 			// In 3-column mode: highlight input1 and base
 			if (isTwoColumnMode) {
-				// 2-column: only highlight input1 (left side - shows removed content)
-				input1Class = "merge-change-incoming"; // Red/orange for removed
+				// 2-column: highlight input1 as deletion (red for removed content)
+				input1Class = "merge-2way-deletion"; // Red for deletions in 2-way mode
 				input2Class = ""; // No highlighting on input2 (doesn't exist)
 				input1OverviewColor = config.baseOverviewColor; // Red for removed content
 				input2OverviewColor = "";
@@ -88,11 +88,13 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 			}
 			break;
 		case ConflictTypeEnum.INPUT2_ONLY:
-			// Only input2 changed
-			input1Class = isTwoColumnMode ? "merge-change-incoming" : ""; // Highlight input1 in 2-column mode
-			input2Class = "merge-change-current";
+			// Only input2 changed (addition in input2)
+			// In 2-column mode: only highlight input2 as addition (green)
+			// In 3-column mode: highlight input2 and base
+			input1Class = ""; // No highlighting on input1 (doesn't exist in 2-way, or unchanged in 3-way)
+			input2Class = "merge-change-current"; // Green for additions
 			baseClass = isTwoColumnMode ? "" : "merge-change-base";
-			input1OverviewColor = isTwoColumnMode ? config.changeOverviewColor : "";
+			input1OverviewColor = "";
 			input2OverviewColor = config.changeOverviewColor;
 			baseOverviewColor = isTwoColumnMode ? "" : config.baseOverviewColor;
 			break;

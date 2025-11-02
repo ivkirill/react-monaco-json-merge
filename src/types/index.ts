@@ -1,6 +1,5 @@
 import type { Operation as JsonPatchOperation } from "fast-json-patch";
 import type * as monaco from "monaco-editor";
-import type { HTMLAttributes } from "react";
 
 export interface JSONSchema {
 	type?: string | string[];
@@ -69,7 +68,7 @@ export interface EditorDiffMergeProps {
 	width?: string | number;
 	height?: string | number;
 	className?: string;
-	wrapperProps?: HTMLAttributes<HTMLDivElement>;
+	loading?: React.ReactNode;
 	options?: monaco.editor.IStandaloneEditorConstructionOptions;
 	onMount?: (editor: monaco.editor.IStandaloneDiffEditor, monaco: typeof import("monaco-editor")) => void;
 	onMergeResolve?: (content: string, resolution?: ResolutionInfo) => void;
@@ -80,13 +79,6 @@ export interface EditorDiffMergeProps {
 	patches?: {
 		theirs?: JsonPatchOperation[];
 		ours?: JsonPatchOperation[];
-	};
-	threeWayDiffColors?: {
-		conflict?: { light: string; dark: string };
-		change?: { light: string; dark: string };
-		base?: { light: string; dark: string };
-		sameChange?: { light: string; dark: string };
-		input1Only?: { light: string; dark: string };
 	};
 	labels?: {
 		input1?: string;
