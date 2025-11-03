@@ -1,6 +1,6 @@
 {
 	"name": "react-monaco-json-merge",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "A powerful React component for 3-way JSON merging with semantic comparison, built on Monaco Editor. Features schema-aware conflict detection, interactive resolution, and real-time validation.",
 	"type": "module",
 	"author": "Kirill Ivanov <v.b.ingram@gmail.com>",
@@ -56,7 +56,7 @@
 	],
 	"scripts": {
 		"dev": "vite",
-		"build": "npm run build:types && npm run build:lib",
+		"build": "npm run build:lib && npm run build:types",
 		"build:types": "tsc -p tsconfig.build.json",
 		"build:lib": "cross-env BUILD_MODE=lib node_modules/.bin/vite build",
 		"build:demo": "cross-env GITHUB_PAGES=true vite build",
