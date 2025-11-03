@@ -74,6 +74,7 @@
 		"validate": "npm run type-check && npm run lint -- --max-diagnostics=200 && npm run test:run",
 		"clean": "rm -rf dist coverage node_modules/.vite",
 		"clean:all": "npm run clean && rm -rf node_modules package-lock.json",
+		"prepublish": "npm run validate && npm run build",
 		"prepare": "husky"
 	},
 	"lint-staged": {
