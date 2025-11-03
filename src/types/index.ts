@@ -1,18 +1,8 @@
 import type { Operation as JsonPatchOperation } from "fast-json-patch";
+import type { JSONSchema7 } from "json-schema";
 import type * as monaco from "monaco-editor";
 
-export interface JSONSchema {
-	type?: string | string[];
-	properties?: Record<string, JSONSchema>;
-	items?: JSONSchema | JSONSchema[] | boolean;
-	const?: unknown;
-	oneOf?: JSONSchema[];
-	anyOf?: JSONSchema[];
-	allOf?: JSONSchema[];
-	format?: string;
-	additionalProperties?: boolean | JSONSchema;
-	[key: string]: unknown;
-}
+export type JSONSchema = JSONSchema7;
 
 // Conflict and Editor types
 export enum InputState {
