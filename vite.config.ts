@@ -40,7 +40,8 @@ export default defineConfig({
 								'react/jsx-runtime': 'react/jsx-runtime',
 							},
 							assetFileNames: (assetInfo) => {
-								if (assetInfo.name === 'style.css') {
+								// Ensure CSS files are named style.css for the library build
+								if (assetInfo.name && assetInfo.name.endsWith('.css')) {
 									return 'style.css';
 								}
 								return assetInfo.name || 'asset';
