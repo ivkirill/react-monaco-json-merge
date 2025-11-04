@@ -11,8 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  metadata: read
+  contents: write
 
 jobs:
   update-info:
