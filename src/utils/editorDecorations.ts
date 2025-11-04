@@ -24,6 +24,8 @@ export interface DecorationClasses {
 	input1OverviewColor: string;
 	input2OverviewColor: string;
 	baseOverviewColor: string;
+	input1Symbol: string; // "+" for addition, "-" for deletion, "" for none
+	input2Symbol: string; // "+" for addition, "-" for deletion, "" for none
 }
 
 /**
@@ -36,6 +38,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 	let input1OverviewColor = "";
 	let input2OverviewColor = "";
 	let baseOverviewColor = "";
+	let input1Symbol = "";
+	let input2Symbol = "";
 
 	switch (conflict.conflictType) {
 		case ConflictTypeEnum.SAME_CHANGE: {
@@ -55,6 +59,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 					input1OverviewColor = config.baseOverviewColor;
 					input2OverviewColor = config.changeOverviewColor;
 					baseOverviewColor = "";
+					input1Symbol = "-"; // Deletion symbol
+					input2Symbol = "+"; // Addition symbol
 				} else {
 					// Both made the same change to existing item - input1 should be red
 					input1Class = "merge-2way-deletion"; // Red for deletions in 2-way mode
@@ -63,6 +69,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 					input1OverviewColor = config.baseOverviewColor;
 					input2OverviewColor = config.changeOverviewColor;
 					baseOverviewColor = "";
+					input1Symbol = "-"; // Deletion symbol
+					input2Symbol = ""; // No symbol for same change
 				}
 			} else {
 				// 3-column mode
@@ -74,6 +82,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 					input1OverviewColor = config.changeOverviewColor;
 					input2OverviewColor = config.changeOverviewColor;
 					baseOverviewColor = "";
+					input1Symbol = "+"; // Addition symbol
+					input2Symbol = "+"; // Addition symbol
 				} else {
 					// Both made the same change to existing item:
 					// - input2 (ours) should be highlighted in blue (same-change)
@@ -84,6 +94,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 					input1OverviewColor = config.changeOverviewColor;
 					input2OverviewColor = config.changeOverviewColor;
 					baseOverviewColor = config.baseOverviewColor;
+					input1Symbol = ""; // No symbol for same change
+					input2Symbol = ""; // No symbol for same change
 				}
 			}
 			break;
@@ -98,6 +110,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 				input2Class = ""; // No highlighting on input2 (doesn't exist)
 				input1OverviewColor = config.baseOverviewColor; // Red for removed content
 				input2OverviewColor = "";
+				input1Symbol = "-"; // Deletion symbol
+				input2Symbol = "";
 			} else {
 				// 3-column: highlight input1 and base
 				input1Class = "merge-change-incoming";
@@ -106,6 +120,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 				input1OverviewColor = config.conflictOverviewColor; // Orange for incoming changes
 				input2OverviewColor = "";
 				baseOverviewColor = config.baseOverviewColor;
+				input1Symbol = "-"; // Deletion symbol
+				input2Symbol = "";
 			}
 			break;
 		case ConflictTypeEnum.INPUT2_ONLY:
@@ -118,6 +134,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 			input1OverviewColor = "";
 			input2OverviewColor = config.changeOverviewColor;
 			baseOverviewColor = isTwoColumnMode ? "" : config.baseOverviewColor;
+			input1Symbol = "";
+			input2Symbol = "+"; // Addition symbol
 			break;
 		case ConflictTypeEnum.TRUE_CONFLICT: {
 			// Check if this is an item added in both inputs (not in base)
@@ -137,6 +155,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 					input1OverviewColor = config.baseOverviewColor;
 					input2OverviewColor = config.changeOverviewColor;
 					baseOverviewColor = "";
+					input1Symbol = "-"; // Deletion symbol
+					input2Symbol = "+"; // Addition symbol
 				} else {
 					// True conflict - input1 should be red in 2-way mode
 					input1Class = "merge-2way-deletion"; // Red for deletions in 2-way mode
@@ -145,6 +165,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 					input1OverviewColor = config.baseOverviewColor;
 					input2OverviewColor = config.conflictOverviewColor;
 					baseOverviewColor = config.baseOverviewColor; // Keep for consistency (though not used in 2-way mode)
+					input1Symbol = "-"; // Deletion symbol
+					input2Symbol = "+"; // Addition symbol
 				}
 			} else {
 				// 3-column mode
@@ -156,6 +178,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 					input1OverviewColor = config.changeOverviewColor;
 					input2OverviewColor = config.changeOverviewColor;
 					baseOverviewColor = "";
+					input1Symbol = "+"; // Addition symbol
+					input2Symbol = "+"; // Addition symbol
 				} else {
 					// True conflict - highlight all three
 					input1Class = "merge-conflict-incoming";
@@ -164,6 +188,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 					input1OverviewColor = config.conflictOverviewColor;
 					input2OverviewColor = config.conflictOverviewColor;
 					baseOverviewColor = config.baseOverviewColor;
+					input1Symbol = ""; // No symbol for conflicts
+					input2Symbol = ""; // No symbol for conflicts
 				}
 			}
 			break;
@@ -177,6 +203,8 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 		input1OverviewColor,
 		input2OverviewColor,
 		baseOverviewColor,
+		input1Symbol,
+		input2Symbol,
 	};
 }
 
@@ -218,6 +246,10 @@ export function createInput1Decorations(
 				options: {
 					isWholeLine: true,
 					className: classes.input1Class,
+					linesDecorationsClassName:
+						classes.input1Symbol && classes.input1Symbol !== ""
+							? `diff-symbol diff-symbol-${classes.input1Symbol === "+" ? "plus" : "minus"}`
+							: undefined,
 					overviewRuler: classes.input1OverviewColor
 						? {
 								color: classes.input1OverviewColor,
@@ -260,6 +292,10 @@ export function createInput2Decorations(
 				options: {
 					isWholeLine: true,
 					className: classes.input2Class,
+					linesDecorationsClassName:
+						classes.input2Symbol && classes.input2Symbol !== ""
+							? `diff-symbol diff-symbol-${classes.input2Symbol === "+" ? "plus" : "minus"}`
+							: undefined,
 					overviewRuler: classes.input2OverviewColor
 						? {
 								color: classes.input2OverviewColor,

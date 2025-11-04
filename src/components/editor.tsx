@@ -842,6 +842,57 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
         outline: 1px solid ${isDark ? "rgba(255, 100, 100, 0.5)" : "rgba(255, 0, 0, 0.3)"};
       }
 
+      /* Diff symbols (+ and -) in line decorations - positioned in code area */
+      .monaco-editor .diff-symbol {
+        position: relative;
+        overflow: visible !important;
+      }
+
+      /* Hide symbol if there's a folding control on the same line */
+      .monaco-editor .diff-symbol:has(+ .monaco-folding-control)::before,
+      .monaco-editor .diff-symbol:has(~ .monaco-folding-control)::before,
+      .monaco-editor .monaco-glyph-margin:has(.monaco-folding-control) ~ .diff-symbol::before {
+        display: none !important;
+      }
+
+      .monaco-editor .diff-symbol.diff-symbol-plus::before {
+        content: "+";
+        position: absolute;
+        right: 1px;
+        top: 0;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+        line-height: 1;
+        z-index: 10;
+        pointer-events: none;
+        font-family: "Courier New", monospace;
+        width: 20px;
+        color: ${isDark ? "#9BB955" : "#6A9955"};
+      }
+
+      .monaco-editor .diff-symbol.diff-symbol-minus::before {
+        content: "-";
+        position: absolute;
+        right: 1px;
+        top: 0;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+        line-height: 1;
+        z-index: 10;
+        pointer-events: none;
+        font-family: "Courier New", monospace;
+        width: 20px;
+        color: ${isDark ? "#FF6464" : "#CC0000"};
+      }
+
       /* VSCode-style checkbox gutter - positioned at Monaco's glyph margin */
       .merge-editor-gutter {
         position: absolute;
