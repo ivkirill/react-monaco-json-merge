@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { JsonDiffMergeEditor } from "./components/editor";
 import { getSampleData } from "./data/sampleData";
 import type { ResolutionInfo } from "./types";
@@ -31,14 +31,15 @@ export function Demo() {
 			minimap: { enabled: minimap },
 			wordWrap,
 			fontSize,
+			theme,
 		}),
-		[readOnly, lineNumbers, minimap, wordWrap, fontSize],
+		[readOnly, lineNumbers, minimap, wordWrap, theme, fontSize],
 	);
 
-	const handleMergeResolve = (content: string, res?: ResolutionInfo) => {
+	const handleMergeResolve = useCallback((content: string, res?: ResolutionInfo) => {
 		setMergedContent(content);
 		setResolution(res || null);
-	};
+	}, []);
 
 	const saveMerge = () => {
 		console.log("Merge resolved:", { mergedContent, resolution });
@@ -55,6 +56,16 @@ export function Demo() {
 			<div className="demo-content">
 				<div className="controls-panel">
 					<h2>Editor Controls</h2>
+
+					<div className="control-group">
+						<label>
+							<strong>Theme:</strong>
+							<select value={theme} onChange={(e) => setTheme(e.target.value as "vs" | "vs-dark")}>
+								<option value="vs">Light (vs)</option>
+								<option value="vs-dark">Dark (vs-dark)</option>
+							</select>
+						</label>
+					</div>
 
 					<div className="control-group">
 						<label>
@@ -84,27 +95,30 @@ export function Demo() {
 						</label>
 					</div>
 
-					<div className="control-group">
-						<label>
-							<strong>Theme:</strong>
-							<select value={theme} onChange={(e) => setTheme(e.target.value as "vs" | "vs-dark")}>
-								<option value="vs">Light (vs)</option>
-								<option value="vs-dark">Dark (vs-dark)</option>
-							</select>
-						</label>
-					</div>
-
 					{mode === "3-way" && (
-						<div className="control-group">
-							<label>
-								<strong>Base Position:</strong>
-								<select value={baseIndex} onChange={(e) => setBaseIndex(Number(e.target.value) as 0 | 1 | 2)}>
-									<option value="0">Left (Theirs - Base - Ours)</option>
-									<option value="1">Middle (Theirs - Base - Ours)</option>
-									<option value="2">Right (Theirs - Ours - Base)</option>
-								</select>
-							</label>
-						</div>
+						<>
+							<div className="control-group">
+								<label>
+									<strong>Base Position:</strong>
+									<select value={baseIndex} onChange={(e) => setBaseIndex(Number(e.target.value) as 0 | 1 | 2)}>
+										<option value="0">Left (Theirs - Base - Ours)</option>
+										<option value="1">Middle (Theirs - Base - Ours)</option>
+										<option value="2">Right (Theirs - Ours - Base)</option>
+									</select>
+								</label>
+							</div>
+
+							<div className="control-group">
+								<label>
+									<input
+										type="checkbox"
+										checked={showResultColumn}
+										onChange={(e) => setShowResultColumn(e.target.checked)}
+									/>
+									Show Result Column
+								</label>
+							</div>
+						</>
 					)}
 
 					<div className="control-group">
@@ -129,13 +143,6 @@ export function Demo() {
 						</label>
 					</div>
 
-					<div className="control-group">
-						<label>
-							<input type="checkbox" checked={showResultColumn} onChange={(e) => setShowResultColumn(e.target.checked)} />
-							<strong>Show Result Column</strong>
-						</label>
-					</div>
-
 					<div className="info-section">
 						<h3>Editor Options:</h3>
 
@@ -156,10 +163,9 @@ export function Demo() {
 						<div className="control-group">
 							<label>
 								<strong>Line Numbers:</strong>
-								<select value={lineNumbers} onChange={(e) => setLineNumbers(e.target.value as "on" | "off" | "relative")}>
+								<select value={lineNumbers} onChange={(e) => setLineNumbers(e.target.value as "on" | "off")}>
 									<option value="on">On</option>
 									<option value="off">Off</option>
-									<option value="relative">Relative</option>
 								</select>
 							</label>
 						</div>

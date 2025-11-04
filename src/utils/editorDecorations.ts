@@ -46,24 +46,45 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 				conflict.input1Range.startLineNumber !== 1 &&
 				conflict.input2Range.startLineNumber !== 1;
 
-			if (isAddedInBothSame) {
-				// Both inputs added the same item - highlight both in blue (auto-merged)
-				input1Class = "merge-same-change"; // Blue for input1 (same addition)
-				input2Class = "merge-same-change"; // Blue for input2 (same addition)
-				baseClass = ""; // No base highlighting (doesn't exist in base)
-				input1OverviewColor = config.changeOverviewColor;
-				input2OverviewColor = config.changeOverviewColor;
-				baseOverviewColor = "";
+			if (isTwoColumnMode) {
+				// 2-column mode: input1 should always be red (deletion from input2's perspective)
+				if (isAddedInBothSame) {
+					// Both added the same - in 2-way mode, input1 should still be red
+					input1Class = "merge-2way-deletion"; // Red for deletions in 2-way mode
+					input2Class = "merge-same-change"; // Blue for input2 (same addition)
+					input1OverviewColor = config.baseOverviewColor;
+					input2OverviewColor = config.changeOverviewColor;
+					baseOverviewColor = "";
+				} else {
+					// Both made the same change to existing item - input1 should be red
+					input1Class = "merge-2way-deletion"; // Red for deletions in 2-way mode
+					input2Class = "merge-same-change"; // Blue for ours (input2)
+					baseClass = "merge-change-base"; // Keep for consistency (though not used in 2-way mode)
+					input1OverviewColor = config.baseOverviewColor;
+					input2OverviewColor = config.changeOverviewColor;
+					baseOverviewColor = "";
+				}
 			} else {
-				// Both made the same change to existing item:
-				// - input2 (ours) should be highlighted in blue (same-change)
-				// - input1 (theirs) should be highlighted in red (incoming)
-				input1Class = "merge-change-incoming"; // Red for theirs (input1)
-				input2Class = "merge-same-change"; // Blue for ours (input2)
-				baseClass = "merge-change-base";
-				input1OverviewColor = config.changeOverviewColor;
-				input2OverviewColor = config.changeOverviewColor;
-				baseOverviewColor = config.baseOverviewColor;
+				// 3-column mode
+				if (isAddedInBothSame) {
+					// Both inputs added the same item - highlight both in blue (auto-merged)
+					input1Class = "merge-same-change"; // Blue for input1 (same addition)
+					input2Class = "merge-same-change"; // Blue for input2 (same addition)
+					baseClass = ""; // No base highlighting (doesn't exist in base)
+					input1OverviewColor = config.changeOverviewColor;
+					input2OverviewColor = config.changeOverviewColor;
+					baseOverviewColor = "";
+				} else {
+					// Both made the same change to existing item:
+					// - input2 (ours) should be highlighted in blue (same-change)
+					// - input1 (theirs) should be highlighted in red (incoming)
+					input1Class = "merge-change-incoming"; // Red for theirs (input1)
+					input2Class = "merge-same-change"; // Blue for ours (input2)
+					baseClass = "merge-change-base";
+					input1OverviewColor = config.changeOverviewColor;
+					input2OverviewColor = config.changeOverviewColor;
+					baseOverviewColor = config.baseOverviewColor;
+				}
 			}
 			break;
 		}
@@ -107,22 +128,43 @@ export function getDecorationClasses(conflict: ModifiedBaseRange, isTwoColumnMod
 				conflict.input1Range.startLineNumber !== 1 &&
 				conflict.input2Range.startLineNumber !== 1;
 
-			if (isAddedInBoth) {
-				// Item added in both inputs - highlight as additions (orange/green)
-				input1Class = "merge-change-incoming"; // Orange/red for input1 addition
-				input2Class = "merge-change-current"; // Green for input2 addition
-				baseClass = ""; // No base highlighting
-				input1OverviewColor = config.changeOverviewColor;
-				input2OverviewColor = config.changeOverviewColor;
-				baseOverviewColor = "";
+			if (isTwoColumnMode) {
+				// 2-column mode: input1 should always be red (deletion from input2's perspective)
+				if (isAddedInBoth) {
+					// Item added in both inputs - input1 should still be red in 2-way mode
+					input1Class = "merge-2way-deletion"; // Red for deletions in 2-way mode
+					input2Class = "merge-change-current"; // Green for input2 addition
+					input1OverviewColor = config.baseOverviewColor;
+					input2OverviewColor = config.changeOverviewColor;
+					baseOverviewColor = "";
+				} else {
+					// True conflict - input1 should be red in 2-way mode
+					input1Class = "merge-2way-deletion"; // Red for deletions in 2-way mode
+					input2Class = "merge-conflict-current"; // Orange for conflicts
+					baseClass = "merge-conflict-base"; // Keep for consistency (though not used in 2-way mode)
+					input1OverviewColor = config.baseOverviewColor;
+					input2OverviewColor = config.conflictOverviewColor;
+					baseOverviewColor = config.baseOverviewColor; // Keep for consistency (though not used in 2-way mode)
+				}
 			} else {
-				// True conflict - highlight all three
-				input1Class = "merge-conflict-incoming";
-				input2Class = "merge-conflict-current";
-				baseClass = "merge-conflict-base";
-				input1OverviewColor = config.conflictOverviewColor;
-				input2OverviewColor = config.conflictOverviewColor;
-				baseOverviewColor = config.baseOverviewColor;
+				// 3-column mode
+				if (isAddedInBoth) {
+					// Item added in both inputs - highlight as additions (orange/green)
+					input1Class = "merge-change-incoming"; // Orange/red for input1 addition
+					input2Class = "merge-change-current"; // Green for input2 addition
+					baseClass = ""; // No base highlighting
+					input1OverviewColor = config.changeOverviewColor;
+					input2OverviewColor = config.changeOverviewColor;
+					baseOverviewColor = "";
+				} else {
+					// True conflict - highlight all three
+					input1Class = "merge-conflict-incoming";
+					input2Class = "merge-conflict-current";
+					baseClass = "merge-conflict-base";
+					input1OverviewColor = config.conflictOverviewColor;
+					input2OverviewColor = config.conflictOverviewColor;
+					baseOverviewColor = config.baseOverviewColor;
+				}
 			}
 			break;
 		}

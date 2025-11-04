@@ -29,13 +29,18 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 		loading,
 		onMount,
 		onMergeResolve,
-		showResultColumn = false,
+		showResultColumn: showResultColumnProps,
 		baseIndex = 1,
 		comparisonMode = "split",
 		schema,
 		patches,
 		labels,
 	} = props;
+
+	const showResultColumn = base ? showResultColumnProps : false;
+
+	// Determine 2-way mode early (base is undefined or empty string in 2-way mode)
+	const isTwoColumnModeProp = !base || base === "";
 
 	// Hardcode language to "json" - this component is JSON-only
 	const language = "json";
@@ -47,6 +52,9 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 	const [_validationWarnings, setValidationWarnings] = useState<string[]>([]);
 	const [conflictIssues, setConflictIssues] = useState<ConflictIssue[]>([]);
 	const [isResultManuallyEdited, setIsResultManuallyEdited] = useState(false);
+
+	// Track last resolution to avoid unnecessary callbacks
+	const lastResolutionRef = useRef<string>("");
 
 	// Function to render native checkbox (simpler and more reliable than React Portal)
 	const renderCheckbox = useCallback((state: InputState, _inputNumber: 1 | 2, _conflictId: string, onToggle: () => void) => {
@@ -440,16 +448,21 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 			}
 
 			// Callback with resolved content and resolution info (even if invalid, so parent can handle)
-			// Defer the callback to avoid React setState warning (updating parent component during render)
+			// Only call if content actually changed to avoid infinite loops
 			if (onMergeResolve) {
-				queueMicrotask(() => {
-					onMergeResolve(result.content, {
-						isValid: result.isValid,
-						validationError: result.validationError,
-						warnings: result.warnings,
-						conflictIssues: result.conflictIssues,
+				const resolutionKey = `${result.content}|${result.isValid}|${result.warnings?.join(",")}`;
+				if (lastResolutionRef.current !== resolutionKey) {
+					lastResolutionRef.current = resolutionKey;
+					// Defer the callback to avoid React setState warning (updating parent component during render)
+					queueMicrotask(() => {
+						onMergeResolve(result.content, {
+							isValid: result.isValid,
+							validationError: result.validationError,
+							warnings: result.warnings,
+							conflictIssues: result.conflictIssues,
+						});
 					});
-				});
+				}
 			}
 		},
 		[onMergeResolve, schema, labels, theme, renderConflictIssueMarkers, showResultColumn, isResultManuallyEdited],
@@ -742,7 +755,8 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 		);
 
 		// Check if we're in 2-column mode (no base)
-		const isTwoColumnMode = !baseEditorRef.current;
+		// Use the pre-computed value from props to ensure accuracy
+		const isTwoColumnMode = isTwoColumnModeProp;
 
 		// Create decoration configuration
 		const decorationConfig: DecorationConfig = {
@@ -797,17 +811,18 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
         background-color: ${conflictColor};
       }
 
+      /* 2-way diff mode: red for deletions (input1 column) - must override merge-change-incoming */
+      .monaco-editor .merge-2way-deletion,
+      .monaco-editor .monaco-editor .merge-2way-deletion {
+        background-color: ${baseColor} !important;
+      }
+
       /* Single-side change (green for input2/ours, orange for input1/theirs in 3-way) */
       .monaco-editor .merge-change-incoming {
         background-color: ${input1OnlyColor};
       }
       .monaco-editor .merge-change-current {
         background-color: ${changeColor};
-      }
-
-      /* 2-way diff mode: red for deletions (input1 column) */
-      .monaco-editor .merge-2way-deletion {
-        background-color: ${baseColor};
       }
 
       /* Same change on both sides (blue/purple) */
@@ -942,7 +957,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 			}
 			baseDecorationsRef.current.set(baseDecorations);
 		}
-	}, [conflicts, theme, getThemeColor]);
+	}, [conflicts, theme, isTwoColumnModeProp, getThemeColor]);
 
 	const createEditor = useCallback(() => {
 		if (!preventCreation.current && containerRef.current && monacoRef.current && !isMonacoMounting) {
@@ -1064,7 +1079,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 
 			// Create result column if enabled
 			let resultC: { container: HTMLDivElement; editorDiv: HTMLDivElement; gutterDiv: HTMLDivElement | null } | null = null;
-			if (showResultColumn) {
+			if (showResultColumn && hasBase) {
 				resultC = createEditorContainer(labels?.result || "Result", resultHeaderBg, true); // Enable gutter for error indicators
 				// Store reference to result label for validation error indicators
 				resultLabelRef.current = resultC.container.querySelector("div") as HTMLDivElement;
@@ -1158,6 +1173,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 	const prevBaseIndexRef = useRef(baseIndex);
 	const prevComparisonModeRef = useRef(comparisonMode);
 	const prevBaseRef = useRef(base);
+
 	useEffect(() => {
 		const showResultChanged = prevShowResultRef.current !== showResultColumn;
 		const baseIndexChanged = prevBaseIndexRef.current !== baseIndex;
@@ -1235,10 +1251,13 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 	useEffect(() => {
 		if (isEditorReady && conflicts.length > 0) {
 			applyDecorations();
+
 			// Render checkbox gutters
-			renderCheckboxGutters();
+			if (showResultColumn) {
+				renderCheckboxGutters();
+			}
 		}
-	}, [isEditorReady, conflicts, applyDecorations, renderCheckboxGutters]);
+	}, [isEditorReady, conflicts, applyDecorations, renderCheckboxGutters, showResultColumn]);
 
 	// Update result editor when conflicts or showResultColumn changes
 	useEffect(() => {
