@@ -166,26 +166,3 @@ jobs:
             git push origin "$TAG"
             echo "✅ Created and pushed tag $TAG"
           fi
-
-      - name: Update repository description and homepage
-        continue-on-error: true
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-
-            try {
-              await github.rest.repos.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                description: packageJson.description,
-                homepage: packageJson.homepage || ''
-              });
-              console.log(`✅ Updated repository description: ${packageJson.description}`);
-              console.log(`✅ Updated homepage: ${packageJson.homepage}`);
-            } catch (error) {
-              console.log('⚠️ Could not update repository info (requires admin permissions)');
-              console.log(`   Description: ${packageJson.description}`);
-              console.log(`   Homepage: ${packageJson.homepage}`);
-            }
