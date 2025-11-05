@@ -24,6 +24,11 @@ on:
         required: false
         type: boolean
         default: true
+      deploy_pages:
+        description: 'Deploy to GitHub Pages'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -166,3 +171,20 @@ jobs:
             git push origin "$TAG"
             echo "✅ Created and pushed tag $TAG"
           fi
+
+      - name: Trigger Pages deployment
+        if: steps.version.outputs.is_manual == 'true' && inputs.deploy_pages == true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'deploy-pages.yml',
+                ref: 'master'
+              });
+              console.log('✅ Triggered GitHub Pages deployment');
+            } catch (error) {
+              console.log('⚠️ Could not trigger Pages deployment:', error.message);
+            }
