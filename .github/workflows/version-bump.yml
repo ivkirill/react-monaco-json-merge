@@ -11,6 +11,11 @@ on:
           - patch
           - minor
           - major
+      create_release:
+        description: 'Create tag and trigger publish workflow'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -57,7 +62,14 @@ jobs:
           git push
 
       - name: Create and push tag
+        if: github.event.inputs.create_release == 'true'
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           git tag -a "$TAG" -m "Release v${{ steps.version.outputs.version }}"
           git push origin "$TAG"
+          echo "✅ Tag $TAG created and pushed - this will trigger the publish workflow"
+
+      - name: Skip release creation
+        if: github.event.inputs.create_release != 'true'
+        run: |
+          echo "⏭️ Skipping tag creation - version bumped to ${{ steps.version.outputs.version }} without publishing"
