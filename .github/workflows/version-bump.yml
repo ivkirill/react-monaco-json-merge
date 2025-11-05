@@ -62,7 +62,7 @@ jobs:
           git push
 
       - name: Create and push tag
-        if: github.event.inputs.create_release == 'true'
+        if: inputs.create_release == true
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           git tag -a "$TAG" -m "Release v${{ steps.version.outputs.version }}"
@@ -70,6 +70,6 @@ jobs:
           echo "✅ Tag $TAG created and pushed - this will trigger the publish workflow"
 
       - name: Skip release creation
-        if: github.event.inputs.create_release != 'true'
+        if: inputs.create_release != true
         run: |
           echo "⏭️ Skipping tag creation - version bumped to ${{ steps.version.outputs.version }} without publishing"
