@@ -1224,25 +1224,46 @@ function createConflictsForGroup(
 		// Check if input2 changed this property
 		let input2Changed = false;
 
+		// Special handling for 2-way mode (no base)
+		const isTwoWayMode = base === undefined;
+
 		if (patch.op === "add") {
-			// Add: check if input1 added it (doesn't exist in base, exists in input1)
-			input1Changed = patchBaseValue === undefined && patchInput1Value !== undefined;
-			// Add: check if input2 added it
-			input2Changed = patchBaseValue === undefined && patchInput2Value !== undefined;
-		} else if (patch.op === "remove") {
-			// Remove: check if input1 removed it (exists in base, doesn't exist in input1)
-			input1Changed = patchBaseValue !== undefined && patchInput1Value === undefined;
-			// Remove: check if input2 removed it
-			input2Changed = patchBaseValue !== undefined && patchInput2Value === undefined;
-		} else if (patch.op === "replace") {
-			// Replace: check if input1 changed it from base
-			if (patchBaseValue !== undefined) {
-				input1Changed = !isEqual(patchBaseValue, patchInput1Value);
-				input2Changed = !isEqual(patchBaseValue, patchInput2Value);
-			} else {
-				// Added in both (shouldn't happen with replace, but handle it)
-				input1Changed = patchInput1Value !== undefined;
+			if (isTwoWayMode) {
+				// 2-way mode: "add" means added to input2 (exists in input2, not in input1)
+				input1Changed = false; // Doesn't exist in input1
 				input2Changed = patchInput2Value !== undefined;
+			} else {
+				// 3-way mode: Add: check if input1 added it (doesn't exist in base, exists in input1)
+				input1Changed = patchBaseValue === undefined && patchInput1Value !== undefined;
+				// Add: check if input2 added it
+				input2Changed = patchBaseValue === undefined && patchInput2Value !== undefined;
+			}
+		} else if (patch.op === "remove") {
+			if (isTwoWayMode) {
+				// 2-way mode: "remove" means removed from input2 (exists in input1, not in input2)
+				input1Changed = patchInput1Value !== undefined; // Exists in input1
+				input2Changed = false; // Doesn't exist in input2
+			} else {
+				// 3-way mode: Remove: check if input1 removed it (exists in base, doesn't exist in input1)
+				input1Changed = patchBaseValue !== undefined && patchInput1Value === undefined;
+				// Remove: check if input2 removed it
+				input2Changed = patchBaseValue !== undefined && patchInput2Value === undefined;
+			}
+		} else if (patch.op === "replace") {
+			if (isTwoWayMode) {
+				// 2-way mode: "replace" means values differ between input1 and input2
+				input1Changed = patchInput1Value !== undefined && !isEqual(patchInput1Value, patchInput2Value);
+				input2Changed = patchInput2Value !== undefined && !isEqual(patchInput1Value, patchInput2Value);
+			} else {
+				// 3-way mode: Replace: check if input1 changed it from base
+				if (patchBaseValue !== undefined) {
+					input1Changed = !isEqual(patchBaseValue, patchInput1Value);
+					input2Changed = !isEqual(patchBaseValue, patchInput2Value);
+				} else {
+					// Added in both (shouldn't happen with replace, but handle it)
+					input1Changed = patchInput1Value !== undefined;
+					input2Changed = patchInput2Value !== undefined;
+				}
 			}
 		}
 
@@ -1548,18 +1569,21 @@ export function mapConflictsToRanges(
 
 		if (conflict.patches1 && (conflict.patches1.length ?? 0) > 0) {
 			for (const patch of conflict.patches1) {
-				// Skip removals - the item doesn't exist in input1, so there's nothing to highlight
-				// Highlighting would show wrong lines (line numbers from base don't match input1)
-				if (patch.op === "remove") {
+				// In 3-way mode: skip removals - the item doesn't exist in input1
+				// In 2-way mode: "remove" means item exists in input1 but not input2, so we SHOULD highlight it
+				const isTwoWayMode = !baseText || baseText.trim() === "";
+
+				if (patch.op === "remove" && !isTwoWayMode) {
+					// Skip removals only in 3-way mode
 					continue;
 				}
 
-				// For non-removals, find node in input1
+				// For non-removals (or removals in 2-way mode), find node in input1
 				const lines = getNodeLines(input1Text, patch.path);
 
 				// Only include if the node was found (not {1,1} default)
 				if (lines.start !== 1 || lines.end !== 1) {
-					// For additions/replacements, add ALL lines in the range (for multi-line objects/arrays)
+					// For additions/replacements/removals, add ALL lines in the range (for multi-line objects/arrays)
 					for (let lineNum = lines.start; lineNum <= lines.end; lineNum++) {
 						input1Diffs.push({ line: lineNum });
 					}

@@ -234,36 +234,71 @@ export function createInput1Decorations(
 ): monaco.editor.IModelDeltaDecoration[] {
 	const decorations: monaco.editor.IModelDeltaDecoration[] = [];
 
-	// Only highlight specific lines from input1Diffs, not the entire range
-	// This ensures we don't highlight lines with identical/unchanged properties
-	if (conflict.input1Diffs.length > 0 && classes.input1Class) {
-		const uniqueLines = extractUniqueLines(conflict.input1Diffs);
+	// Check if we should highlight this conflict
+	if (classes.input1Class) {
+		// Only highlight specific lines from input1Diffs, not the entire range
+		// This ensures we don't highlight lines with identical/unchanged properties
+		// HOWEVER: For INPUT1_ONLY (deletions), input1Diffs may be empty, so we need to highlight the entire range
+		if (conflict.input1Diffs.length > 0) {
+			const uniqueLines = extractUniqueLines(conflict.input1Diffs);
 
-		// Create a decoration for each unique line that actually changed
-		for (const lineNum of uniqueLines) {
-			decorations.push({
-				range: new monacoInstance.Range(lineNum, 1, lineNum, Number.MAX_SAFE_INTEGER),
-				options: {
-					isWholeLine: true,
-					className: classes.input1Class,
-					linesDecorationsClassName:
-						classes.input1Symbol && classes.input1Symbol !== ""
-							? `diff-symbol diff-symbol-${classes.input1Symbol === "+" ? "plus" : "minus"}`
+			// Create a decoration for each unique line that actually changed
+			for (const lineNum of uniqueLines) {
+				decorations.push({
+					range: new monacoInstance.Range(lineNum, 1, lineNum, Number.MAX_SAFE_INTEGER),
+					options: {
+						isWholeLine: true,
+						className: classes.input1Class,
+						linesDecorationsClassName:
+							classes.input1Symbol && classes.input1Symbol !== ""
+								? `diff-symbol diff-symbol-${classes.input1Symbol === "+" ? "plus" : "minus"}`
+								: undefined,
+						overviewRuler: classes.input1OverviewColor
+							? {
+									color: classes.input1OverviewColor,
+									position: monacoInstance.editor.OverviewRulerLane.Full,
+								}
 							: undefined,
-					overviewRuler: classes.input1OverviewColor
-						? {
-								color: classes.input1OverviewColor,
-								position: monacoInstance.editor.OverviewRulerLane.Full,
-							}
-						: undefined,
-					minimap: classes.input1OverviewColor
-						? {
-								color: classes.input1OverviewColor,
-								position: monacoInstance.editor.MinimapPosition.Inline,
-							}
-						: undefined,
-				},
-			});
+						minimap: classes.input1OverviewColor
+							? {
+									color: classes.input1OverviewColor,
+									position: monacoInstance.editor.MinimapPosition.Inline,
+								}
+							: undefined,
+					},
+				});
+			}
+		} else if (conflict.conflictType === ConflictTypeEnum.INPUT1_ONLY) {
+			// For INPUT1_ONLY (deletions in 2-way mode), highlight the entire range
+			// since input1Diffs may be empty but we still want to show the deleted content
+			const startLine = conflict.input1Range.startLineNumber;
+			const endLine = conflict.input1Range.endLineNumberExclusive - 1;
+
+			for (let lineNum = startLine; lineNum <= endLine; lineNum++) {
+				decorations.push({
+					range: new monacoInstance.Range(lineNum, 1, lineNum, Number.MAX_SAFE_INTEGER),
+					options: {
+						isWholeLine: true,
+						className: classes.input1Class,
+						linesDecorationsClassName:
+							classes.input1Symbol && classes.input1Symbol !== ""
+								? `diff-symbol diff-symbol-${classes.input1Symbol === "+" ? "plus" : "minus"}`
+								: undefined,
+						overviewRuler: classes.input1OverviewColor
+							? {
+									color: classes.input1OverviewColor,
+									position: monacoInstance.editor.OverviewRulerLane.Full,
+								}
+							: undefined,
+						minimap: classes.input1OverviewColor
+							? {
+									color: classes.input1OverviewColor,
+									position: monacoInstance.editor.MinimapPosition.Inline,
+								}
+							: undefined,
+					},
+				});
+			}
 		}
 	}
 
