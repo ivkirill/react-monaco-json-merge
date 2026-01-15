@@ -1212,9 +1212,17 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 
 			preventCreation.current = true;
 
-			// Call onMount
-			if (onMount && input1EditorRef.current) {
-				onMount(input1EditorRef.current as unknown as monaco.editor.IStandaloneDiffEditor, monacoInstance);
+			// Call onMount - pass all editor instances for flexibility
+			if (onMount && input1EditorRef.current && input2EditorRef.current) {
+				onMount(
+					{
+						input1: input1EditorRef.current,
+						input2: input2EditorRef.current,
+						base: baseEditorRef.current,
+						result: resultEditorRef.current,
+					},
+					monacoInstance,
+				);
 			}
 		}
 	}, [options, theme, original, modified, base, showResultColumn, baseIndex, isMonacoMounting, computeDiffs, onMount, labels]);

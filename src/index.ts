@@ -3,6 +3,7 @@ export type {
 	ConflictIssue,
 	ConflictType,
 	EditorDiffMergeProps,
+	EditorRefs,
 	InputState,
 	JSONSchema,
 	ModifiedBaseRange,

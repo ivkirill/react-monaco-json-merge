@@ -50,6 +50,13 @@ export interface ResolutionInfo {
 	conflictIssues?: ConflictIssue[];
 }
 
+export interface EditorRefs {
+	input1: monaco.editor.IStandaloneCodeEditor;
+	input2: monaco.editor.IStandaloneCodeEditor;
+	base: monaco.editor.IStandaloneCodeEditor | null;
+	result: monaco.editor.IStandaloneCodeEditor | null;
+}
+
 export interface EditorDiffMergeProps {
 	original?: string;
 	modified?: string;
@@ -60,7 +67,7 @@ export interface EditorDiffMergeProps {
 	className?: string;
 	loading?: React.ReactNode;
 	options?: monaco.editor.IStandaloneEditorConstructionOptions;
-	onMount?: (editor: monaco.editor.IStandaloneDiffEditor, monaco: typeof import("monaco-editor")) => void;
+	onMount?: (editors: EditorRefs, monaco: typeof import("monaco-editor")) => void;
 	onMergeResolve?: (content: string, resolution?: ResolutionInfo) => void;
 	showResultColumn?: boolean;
 	baseIndex?: 0 | 1 | 2;
