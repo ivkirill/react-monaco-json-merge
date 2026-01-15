@@ -1,6 +1,6 @@
 {
 	"name": "react-monaco-json-merge",
-	"version": "1.1.16",
+	"version": "1.1.17",
 	"description": "A powerful React component for 3-way JSON merging with semantic comparison, built on Monaco Editor. Features schema-aware conflict detection, interactive resolution, and real-time validation.",
 	"type": "module",
 	"author": "Kirill Ivanov <v.b.ingram@gmail.com>",
