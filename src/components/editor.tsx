@@ -52,6 +52,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 	const [_validationWarnings, setValidationWarnings] = useState<string[]>([]);
 	const [conflictIssues, setConflictIssues] = useState<ConflictIssue[]>([]);
 	const [isResultManuallyEdited, setIsResultManuallyEdited] = useState(false);
+	const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
 
 	// Track last resolution to avoid unnecessary callbacks
 	const lastResolutionRef = useRef<string>("");
@@ -97,6 +98,20 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 	const resultGutterRef = useRef<HTMLDivElement | null>(null);
 	const gutterViewsRef = useRef<Map<string, HTMLDivElement>>(new Map());
 	const resultLabelRef = useRef<HTMLDivElement | null>(null);
+
+	// Column container refs for collapse/expand
+	const columnContainersRef = useRef<
+		Map<
+			string,
+			{
+				container: HTMLDivElement;
+				editorWrapper: HTMLDivElement;
+				labelDiv: HTMLDivElement;
+				labelText: HTMLSpanElement;
+				collapseIcon: HTMLDivElement;
+			}
+		>
+	>(new Map());
 
 	// Decoration collections for proper updating
 	const input1DecorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null);
@@ -1016,6 +1031,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 
 			// Clear container
 			containerRef.current.innerHTML = "";
+			columnContainersRef.current.clear();
 
 			// Create layout
 			const wrapper = document.createElement("div");
@@ -1048,27 +1064,68 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 			const resultHeaderBg = getThemeColorLocal("mergeEditor.result.header.background", isDark ? "#7F5F00" : "#FFECB3");
 
 			// Create editor containers
-			const createEditorContainer = (label: string, color: string, withGutter = false) => {
+			const createEditorContainer = (columnKey: string, label: string, color: string, withGutter = false) => {
 				const container = document.createElement("div");
 				container.style.flex = "1";
 				container.style.display = "flex";
 				container.style.flexDirection = "column";
 				container.style.borderRight = `1px solid ${borderColor}`;
+				container.style.overflow = "hidden";
+				container.style.transition = "flex 0.2s ease, min-width 0.2s ease, max-width 0.2s ease";
+				container.dataset.columnKey = columnKey;
 
 				const labelDiv = document.createElement("div");
-				labelDiv.textContent = label;
 				labelDiv.style.padding = "4px 8px";
 				labelDiv.style.fontSize = "11px";
 				labelDiv.style.fontWeight = "500";
 				labelDiv.style.backgroundColor = color;
 				labelDiv.style.color = foregroundColor;
 				labelDiv.style.borderBottom = `1px solid ${borderColor}`;
+				labelDiv.style.display = "flex";
+				labelDiv.style.alignItems = "center";
+				labelDiv.style.gap = "4px";
+				labelDiv.style.height = "22px";
+				labelDiv.style.boxSizing = "content-box";
+				labelDiv.style.whiteSpace = "nowrap";
+				labelDiv.style.overflow = "hidden";
+
+				const labelText = document.createElement("span");
+				labelText.textContent = label;
+				labelText.style.flex = "1";
+				labelText.style.overflow = "hidden";
+				labelText.style.textOverflow = "ellipsis";
+				labelDiv.appendChild(labelText);
+
+				// Collapse/expand icon
+				const collapseIcon = document.createElement("div");
+				collapseIcon.className = "column-collapse-icon";
+				collapseIcon.title = "Collapse column";
+				collapseIcon.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:block"><path d="M8 2L4 6L8 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+				collapseIcon.addEventListener("click", (e) => {
+					e.stopPropagation();
+					setCollapsedColumns((prev) => {
+						const next = new Set(prev);
+						if (next.has(columnKey)) {
+							next.delete(columnKey);
+						} else {
+							// Count total visible columns
+							const allColumnKeys = Array.from(columnContainersRef.current.keys());
+							const visibleCount = allColumnKeys.filter((k) => !next.has(k)).length;
+							if (visibleCount <= 1) return prev;
+							next.add(columnKey);
+						}
+						return next;
+					});
+				});
+
+				labelDiv.appendChild(collapseIcon);
 				container.appendChild(labelDiv);
 
 				const editorWrapper = document.createElement("div");
 				editorWrapper.style.flex = "1";
 				editorWrapper.style.position = "relative";
-				editorWrapper.style.overflow = `hidden`;
+				editorWrapper.style.overflow = "hidden";
+				editorWrapper.style.transition = "opacity 0.2s ease";
 
 				const editorDiv = document.createElement("div");
 				editorDiv.style.position = "absolute";
@@ -1087,11 +1144,14 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 
 				container.appendChild(editorWrapper);
 
+				// Store refs for collapse/expand manipulation
+				columnContainersRef.current.set(columnKey, { container, editorWrapper, labelDiv, labelText, collapseIcon });
+
 				return { container, editorDiv, gutterDiv };
 			};
 
-			const input1 = createEditorContainer(labels?.input1 || "Theirs", input1HeaderBg, showResultColumn);
-			const input2 = createEditorContainer(labels?.input2 || "Ours", input2HeaderBg, showResultColumn);
+			const input1 = createEditorContainer("input1", labels?.input1 || "Theirs", input1HeaderBg, showResultColumn);
+			const input2 = createEditorContainer("input2", labels?.input2 || "Ours", input2HeaderBg, showResultColumn);
 
 			// Save gutter refs
 			if (input1.gutterDiv) input1GutterRef.current = input1.gutterDiv;
@@ -1103,7 +1163,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 
 			if (hasBase) {
 				// 3-column mode: create base column
-				baseC = createEditorContainer(labels?.base || "Base", baseHeaderBg, false);
+				baseC = createEditorContainer("base", labels?.base || "Base", baseHeaderBg, false);
 
 				// Arrange columns based on baseIndex
 				const orderedColumns: HTMLDivElement[] = [];
@@ -1131,9 +1191,11 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 			// Create result column if enabled
 			let resultC: { container: HTMLDivElement; editorDiv: HTMLDivElement; gutterDiv: HTMLDivElement | null } | null = null;
 			if (showResultColumn && hasBase) {
-				resultC = createEditorContainer(labels?.result || "Result", resultHeaderBg, true); // Enable gutter for error indicators
-				// Store reference to result label for validation error indicators
-				resultLabelRef.current = resultC.container.querySelector("div") as HTMLDivElement;
+				resultC = createEditorContainer("result", labels?.result || "Result", resultHeaderBg, true); // Enable gutter for error indicators
+				// Store reference to result label text span for validation error indicators
+				const resultRefs = columnContainersRef.current.get("result");
+				resultLabelRef.current =
+					(resultRefs?.labelText as HTMLDivElement) ?? (resultC.container.querySelector("span") as HTMLDivElement);
 				// Store reference to result gutter for error/warning indicators
 				if (resultC.gutterDiv) resultGutterRef.current = resultC.gutterDiv;
 				wrapper.appendChild(resultC.container);
@@ -1250,6 +1312,8 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 				view.remove();
 			});
 			gutterViewsRef.current.clear();
+			columnContainersRef.current.clear();
+			setCollapsedColumns(new Set());
 
 			// Clear decoration collections before disposing
 			input1DecorationsRef.current?.set([]);
@@ -1413,6 +1477,68 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 			});
 		};
 	}, [isEditorReady, showResultColumn]);
+
+	// Sync collapsed column state to DOM
+	useEffect(() => {
+		if (!isEditorReady) return;
+
+		const allKeys = Array.from(columnContainersRef.current.keys());
+		const visibleCount = allKeys.filter((k) => !collapsedColumns.has(k)).length;
+
+		for (const [key, refs] of columnContainersRef.current.entries()) {
+			const isCollapsed = collapsedColumns.has(key);
+			const canCollapse = visibleCount > 1 || isCollapsed;
+
+			if (isCollapsed) {
+				refs.container.style.flex = "0 0 28px";
+				refs.container.style.minWidth = "28px";
+				refs.container.style.maxWidth = "28px";
+				refs.editorWrapper.style.opacity = "0";
+				refs.editorWrapper.style.pointerEvents = "none";
+				refs.labelDiv.style.justifyContent = "center";
+				refs.labelText.style.display = "none";
+				refs.collapseIcon.style.transform = "rotate(180deg)";
+				refs.collapseIcon.title = "Expand column";
+			} else {
+				refs.container.style.flex = "1";
+				refs.container.style.minWidth = "";
+				refs.container.style.maxWidth = "";
+				refs.editorWrapper.style.opacity = "1";
+				refs.editorWrapper.style.pointerEvents = "";
+				refs.labelDiv.style.justifyContent = "";
+				refs.labelText.style.display = "";
+				refs.collapseIcon.style.transform = "";
+				refs.collapseIcon.title = "Collapse column";
+			}
+
+			// Disable collapse icon if this is the last visible column
+			if (!isCollapsed && !canCollapse) {
+				refs.collapseIcon.classList.add("column-collapse-icon--disabled");
+				refs.collapseIcon.title = "Cannot collapse last column";
+			} else {
+				refs.collapseIcon.classList.remove("column-collapse-icon--disabled");
+			}
+		}
+
+		// Trigger layout update for all visible editors
+		requestAnimationFrame(() => {
+			for (const [key] of columnContainersRef.current.entries()) {
+				if (!collapsedColumns.has(key)) {
+					const editorRef =
+						key === "input1"
+							? input1EditorRef
+							: key === "input2"
+								? input2EditorRef
+								: key === "base"
+									? baseEditorRef
+									: key === "result"
+										? resultEditorRef
+										: null;
+					editorRef?.current?.layout();
+				}
+			}
+		});
+	}, [isEditorReady, collapsedColumns]);
 
 	// Cleanup
 	useEffect(() => {
