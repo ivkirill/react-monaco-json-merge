@@ -83,4 +83,5 @@ export interface EditorDiffMergeProps {
 		input2?: string;
 		result?: string;
 	};
+	sortKeys?: boolean;
 }

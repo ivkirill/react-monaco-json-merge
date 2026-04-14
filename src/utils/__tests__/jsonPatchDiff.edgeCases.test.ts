@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeConflicts, analyzeTwoWayConflicts, computeDiffsJsonPatch } from "../jsonPatchDiff";
+import { analyzeConflicts, analyzeTwoWayConflicts, computeDiffsJsonPatch, formatJsonForComparison } from "../jsonPatchDiff";
 
 describe("jsonPatchDiff - Edge Cases", () => {
 	describe("computeDiffsJsonPatch - Edge Cases", () => {
@@ -392,6 +392,59 @@ describe("jsonPatchDiff - Edge Cases", () => {
 
 			expect(result).toBeDefined();
 			expect(result.length).toBeGreaterThan(0);
+		});
+	});
+
+	describe("formatJsonForComparison", () => {
+		it("should sort top-level object keys alphabetically", () => {
+			const result = formatJsonForComparison({ c: 3, a: 1, b: 2 });
+			expect(result).toBe('{\n  "a": 1,\n  "b": 2,\n  "c": 3\n}');
+		});
+
+		it("should sort nested object keys deeply", () => {
+			const result = formatJsonForComparison({ z: { b: 2, a: 1 }, a: 1 });
+			const parsed = JSON.parse(result);
+			expect(Object.keys(parsed)).toEqual(["a", "z"]);
+			expect(Object.keys(parsed.z)).toEqual(["a", "b"]);
+		});
+
+		it("should sort object keys inside top-level arrays", () => {
+			const result = formatJsonForComparison([
+				{ z: 1, a: 2 },
+				{ c: 3, b: 4 },
+			]);
+			const parsed = JSON.parse(result);
+			expect(Object.keys(parsed[0])).toEqual(["a", "z"]);
+			expect(Object.keys(parsed[1])).toEqual(["b", "c"]);
+		});
+
+		it("should preserve array order", () => {
+			const result = formatJsonForComparison([3, 1, 2]);
+			expect(JSON.parse(result)).toEqual([3, 1, 2]);
+		});
+
+		it("should handle primitives", () => {
+			expect(formatJsonForComparison("hello")).toBe('"hello"');
+			expect(formatJsonForComparison(42)).toBe("42");
+			expect(formatJsonForComparison(null)).toBe("null");
+			expect(formatJsonForComparison(true)).toBe("true");
+		});
+
+		it("should handle empty object and array", () => {
+			expect(formatJsonForComparison({})).toBe("{}");
+			expect(formatJsonForComparison([])).toBe("[]");
+		});
+
+		it("should sort deeply nested mixed structures", () => {
+			const input = {
+				z: [{ c: 1, a: 2 }],
+				a: { y: { b: 1, a: 2 }, x: 3 },
+			};
+			const parsed = JSON.parse(formatJsonForComparison(input));
+			expect(Object.keys(parsed)).toEqual(["a", "z"]);
+			expect(Object.keys(parsed.a)).toEqual(["x", "y"]);
+			expect(Object.keys(parsed.a.y)).toEqual(["a", "b"]);
+			expect(Object.keys(parsed.z[0])).toEqual(["a", "c"]);
 		});
 	});
 });

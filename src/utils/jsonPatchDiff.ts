@@ -24,8 +24,7 @@ export interface ConflictAnalysis {
  * @returns Formatted JSON string with 2-space indentation
  */
 export function formatJsonForComparison(json: unknown): string {
-	// sortKeys only sorts object keys, arrays remain unchanged
-	if (typeof json === "object" && json !== null && !Array.isArray(json)) {
+	if (typeof json === "object" && json !== null) {
 		const sorted = sortKeys(json as Record<string, unknown>, { deep: true });
 		return JSON.stringify(sorted, null, 2);
 	}

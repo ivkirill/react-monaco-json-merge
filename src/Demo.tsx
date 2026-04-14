@@ -17,6 +17,9 @@ export function Demo() {
 	const [mode, setMode] = useState<"3-way" | "2-way">("3-way");
 	const [height, setHeight] = useState("600px");
 
+	// JSON formatting
+	const [sortKeys, setSortKeys] = useState(false);
+
 	// Monaco editor options
 	const [readOnly, setReadOnly] = useState(false);
 	const [lineNumbers, setLineNumbers] = useState<"on" | "off" | "relative">("on");
@@ -162,6 +165,13 @@ export function Demo() {
 
 						<div className="control-group">
 							<label>
+								<input type="checkbox" checked={sortKeys} onChange={(e) => setSortKeys(e.target.checked)} />
+								<strong>Sort Keys</strong>
+							</label>
+						</div>
+
+						<div className="control-group">
+							<label>
 								<strong>Line Numbers:</strong>
 								<select value={lineNumbers} onChange={(e) => setLineNumbers(e.target.value as "on" | "off")}>
 									<option value="on">On</option>
@@ -247,6 +257,7 @@ export function Demo() {
 							comparisonMode={comparisonMode}
 							baseIndex={baseIndex}
 							options={editorOptions}
+							sortKeys={sortKeys}
 							onMergeResolve={handleMergeResolve}
 							labels={{
 								input1: "Theirs",

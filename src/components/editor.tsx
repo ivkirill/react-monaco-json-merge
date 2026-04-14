@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { type EditorDiffMergeProps, InputState, type ModifiedBaseRange } from "../types";
 import { buildResultContentWithValidation, type ConflictIssue } from "../utils/diffMerge";
 import { createAllDecorations, type DecorationConfig } from "../utils/editorDecorations";
-import { computeDiffsJsonPatch } from "../utils/jsonPatchDiff";
+import { computeDiffsJsonPatch, formatJsonForComparison } from "../utils/jsonPatchDiff";
 import "../styles/editor.css";
 
 // Default Loader component
@@ -35,6 +35,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 		schema,
 		patches,
 		labels,
+		sortKeys: sortKeysProp = false,
 	} = props;
 
 	const showResultColumn = base ? showResultColumnProps : false;
@@ -1029,6 +1030,16 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 		if (!preventCreation.current && containerRef.current && monacoRef.current && !isMonacoMounting) {
 			const monacoInstance = monacoRef.current;
 
+			const preprocessJson = (jsonString: string): string => {
+				if (!sortKeysProp || !jsonString) return jsonString;
+				try {
+					const parsed = JSON.parse(jsonString);
+					return formatJsonForComparison(parsed);
+				} catch {
+					return jsonString;
+				}
+			};
+
 			// Clear container
 			containerRef.current.innerHTML = "";
 			columnContainersRef.current.clear();
@@ -1204,9 +1215,9 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 			containerRef.current.appendChild(wrapper);
 
 			// Create models
-			const input1Model = monacoInstance.editor.createModel(original || "", language);
-			const baseModel = hasBase ? monacoInstance.editor.createModel(base || "", language) : null;
-			const input2Model = monacoInstance.editor.createModel(modified || "", language);
+			const input1Model = monacoInstance.editor.createModel(preprocessJson(original || ""), language);
+			const baseModel = hasBase ? monacoInstance.editor.createModel(preprocessJson(base || ""), language) : null;
+			const input2Model = monacoInstance.editor.createModel(preprocessJson(modified || ""), language);
 
 			// Create editors
 			input1EditorRef.current = monacoInstance.editor.create(input1.editorDiv, {
@@ -1245,7 +1256,7 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 			// Create result editor if enabled
 			if (showResultColumn && resultC) {
 				// Initialize result with "ours" (modified/input2) content
-				const resultModel = monacoInstance.editor.createModel(modified || "", language);
+				const resultModel = monacoInstance.editor.createModel(preprocessJson(modified || ""), language);
 				resultEditorRef.current = monacoInstance.editor.create(resultC.editorDiv, {
 					model: resultModel,
 					automaticLayout: true,
@@ -1287,7 +1298,20 @@ export function JsonDiffMergeEditor(props: EditorDiffMergeProps) {
 				);
 			}
 		}
-	}, [options, theme, original, modified, base, showResultColumn, baseIndex, isMonacoMounting, computeDiffs, onMount, labels]);
+	}, [
+		options,
+		theme,
+		original,
+		modified,
+		base,
+		showResultColumn,
+		baseIndex,
+		isMonacoMounting,
+		computeDiffs,
+		onMount,
+		labels,
+		sortKeysProp,
+	]);
 
 	// Detect showResultColumn, baseIndex, comparisonMode, or base changes and trigger recreation
 	const prevShowResultRef = useRef(showResultColumn);
