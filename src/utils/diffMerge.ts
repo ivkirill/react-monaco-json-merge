@@ -1,7 +1,16 @@
-import { findNodeAtLocation, parseTree } from "jsonc-parser";
+import { parseTree } from "jsonc-parser";
 import { ConflictType, InputState, type JSONSchema, type ModifiedBaseRange } from "../types";
 import { getValueAtPath } from "./helpers";
 import { getSchemaAtPath } from "./jsonPatchDiff";
+import {
+	defineOwnKey,
+	findNodeByPointer,
+	hasOwnKey,
+	JSON_POINTER_APPEND_TOKEN,
+	joinJsonPointer,
+	parseArrayIndex,
+	parseJsonPointer,
+} from "./jsonPointer";
 
 /**
  * Represents a single line change with detailed information
@@ -304,8 +313,13 @@ export interface BuildResultContentResult {
  * @throws Error if path is invalid or types don't match
  */
 export function setValueAtPath(obj: unknown, path: string, value: unknown): void {
-	if (!path || path === "/") {
-		// Setting root - replace entire object
+	const pathSegments = parseJsonPointer(path);
+	if (pathSegments === null) {
+		throw new Error(`Invalid JSON pointer: ${path}`);
+	}
+
+	if (pathSegments.length === 0) {
+		// Root - merge into the existing object
 		if (
 			typeof obj === "object" &&
 			obj !== null &&
@@ -320,48 +334,82 @@ export function setValueAtPath(obj: unknown, path: string, value: unknown): void
 		throw new Error(`Cannot assign root value: expected object, got ${typeof value}`);
 	}
 
-	const pathSegments = path.split("/").filter((s) => s !== "");
-	let current: Record<string, unknown> | unknown[] = obj as Record<string, unknown> | unknown[];
-
+	let current: unknown = obj;
 	for (let i = 0; i < pathSegments.length - 1; i++) {
 		const segment = pathSegments[i];
-		// Check if segment is numeric (array index)
-		const numericIndex = Number.parseInt(segment, 10);
-		if (!Number.isNaN(numericIndex) && String(numericIndex) === segment) {
-			// Array index
-			if (!Array.isArray(current)) {
-				throw new Error(`Path ${path}: segment ${segment} expects array but got ${typeof current}`);
-			}
-			current = current[numericIndex] as Record<string, unknown> | unknown[];
-		} else {
-			// Object key
-			if (!current || typeof current !== "object" || Array.isArray(current)) {
-				throw new Error(`Path ${path}: segment ${segment} expects object but got ${typeof current}`);
-			}
-			const objCurrent = current as Record<string, unknown>;
-			if (!(segment in objCurrent)) {
-				objCurrent[segment] = {};
-			}
-			current = objCurrent[segment] as Record<string, unknown> | unknown[];
-		}
+		current = descendForWrite(current, segment, path);
 	}
 
-	const lastSegment = pathSegments[pathSegments.length - 1];
-	const lastNumeric = Number.parseInt(lastSegment, 10);
-	if (!Number.isNaN(lastNumeric) && String(lastNumeric) === lastSegment) {
-		// Setting array element
-		if (!Array.isArray(current)) {
-			throw new Error(`Path ${path}: last segment expects array but got ${typeof current}`);
-		}
-		current[lastNumeric] = value;
-	} else {
-		// Setting object property
-		if (!current || typeof current !== "object" || Array.isArray(current)) {
-			throw new Error(`Path ${path}: last segment expects object but got ${typeof current}`);
-		}
-		(current as Record<string, unknown>)[lastSegment] = value;
-	}
+	writeChild(current, pathSegments[pathSegments.length - 1], value, path);
 }
+
+/** Describe a container for error messages, distinguishing arrays and null from typeof "object" */
+const describeContainer = (container: unknown): string => {
+	if (Array.isArray(container)) return "array";
+	if (container === null) return "null";
+	return typeof container;
+};
+
+/**
+ * Container type decides how a segment is read. A numeric segment is an index only inside arrays.
+ * Inside an object it is a key that must already exist, so "/responses/200" updates an existing key
+ * and never creates one by accident.
+ */
+const descendForWrite = (container: unknown, segment: string, path: string): unknown => {
+	if (Array.isArray(container)) {
+		const index = parseArrayIndex(segment);
+		if (index === null || index >= container.length) {
+			throw new Error(`Path ${path}: segment ${segment} expects object but got ${describeContainer(container)}`);
+		}
+		return container[index];
+	}
+
+	if (!isWritableObject(container)) {
+		const expected = parseArrayIndex(segment) === null ? "object" : "array";
+		throw new Error(`Path ${path}: segment ${segment} expects ${expected} but got ${describeContainer(container)}`);
+	}
+
+	if (hasOwnKey(container, segment)) {
+		return container[segment];
+	}
+	if (parseArrayIndex(segment) !== null) {
+		throw new Error(`Path ${path}: segment ${segment} expects array but got ${describeContainer(container)}`);
+	}
+	const created: Record<string, unknown> = {};
+	defineOwnKey(container, segment, created);
+	return created;
+};
+
+const writeChild = (container: unknown, segment: string, value: unknown, path: string): void => {
+	if (Array.isArray(container)) {
+		// RFC 6902: "-" addresses the position after the last element
+		if (segment === JSON_POINTER_APPEND_TOKEN) {
+			container.push(value);
+			return;
+		}
+		const index = parseArrayIndex(segment);
+		if (index === null) {
+			throw new Error(`Path ${path}: last segment expects object but got array`);
+		}
+		if (index > container.length) {
+			throw new Error(`Path ${path}: index ${segment} is out of bounds for array of length ${container.length}`);
+		}
+		container[index] = value;
+		return;
+	}
+
+	if (!isWritableObject(container)) {
+		const expected = parseArrayIndex(segment) === null ? "object" : "array";
+		throw new Error(`Path ${path}: last segment expects ${expected} but got ${describeContainer(container)}`);
+	}
+	if (parseArrayIndex(segment) !== null && !hasOwnKey(container, segment)) {
+		throw new Error(`Path ${path}: last segment expects array but got object`);
+	}
+	defineOwnKey(container, segment, value);
+};
+
+const isWritableObject = (container: unknown): container is Record<string, unknown> =>
+	typeof container === "object" && container !== null && !Array.isArray(container);
 
 /**
  * Find line numbers for a JSON path in formatted JSON text
@@ -374,17 +422,10 @@ export function findLinesForPath(jsonContent: string, path: string): { startLine
 		const tree = parseTree(jsonContent);
 		if (!tree) return null;
 
-		// Navigate to the path
-		const segments = path
-			.split("/")
-			.filter((s) => s !== "")
-			.map((segment) => {
-				// Check if segment is a numeric array index
-				const numericValue = Number.parseInt(segment, 10);
-				return !Number.isNaN(numericValue) && String(numericValue) === segment ? numericValue : segment;
-			});
-		const node = findNodeAtLocation(tree, segments);
+		const segments = parseJsonPointer(path);
+		if (segments === null) return null;
 
+		const node = findNodeByPointer(tree, segments);
 		if (!node) return null;
 
 		const lines = jsonContent.substring(0, node.offset).split("\n");
@@ -453,7 +494,7 @@ export function smartMergeValues(value1: unknown, value2: unknown, schema?: JSON
 				// Key exists in both but with different values
 				// Get schema for this property
 				const propertySchema = properties?.[key];
-				const nestedPath = path ? `${path}/${key}` : `/${key}`;
+				const nestedPath = `${path}${joinJsonPointer([key])}`;
 
 				// Try to recursively merge
 				const recursiveMerge = smartMergeValues(merged[key], obj2[key], propertySchema, nestedPath);
@@ -604,13 +645,13 @@ export function buildResultContentWithValidation(
 				// This is an array item conflict
 				// Extract the array path (parent of the numeric index)
 				const fullItemPath = arrayItemMatch[1]; // e.g., "/itemsLimits/item/2"
-				const segments = fullItemPath.split("/").filter((s) => s !== "");
+				const segments = parseJsonPointer(fullItemPath) ?? [];
 				if (segments.length >= 2) {
 					const lastSegment = segments[segments.length - 1];
 					if (/^\d+$/.test(lastSegment)) {
 						// Last segment is numeric - this is an array item
 						isArrayItemConflict = true;
-						arrayPath = `/${segments.slice(0, -1).join("/")}`; // e.g., "/itemsLimits/item"
+						arrayPath = joinJsonPointer(segments.slice(0, -1)); // e.g., "/itemsLimits/item"
 					}
 				}
 			}
@@ -658,9 +699,9 @@ export function buildResultContentWithValidation(
 					pathToApply = arrayPath;
 				} else {
 					// For nested properties, merge parent object but preserve explicitly set properties
-					const pathSegments = conflictPath.split("/").filter(Boolean);
+					const pathSegments = parseJsonPointer(conflictPath) ?? [];
 					if (pathSegments.length > 1) {
-						const parentPath = `/${pathSegments.slice(0, -1).join("/")}`;
+						const parentPath = joinJsonPointer(pathSegments.slice(0, -1));
 						// Only merge parent if we haven't merged it yet
 						if (!mergedParents.has(parentPath)) {
 							const parentInInput1 = getValueAtPath(input1Data as Record<string, unknown>, parentPath);
@@ -669,7 +710,7 @@ export function buildResultContentWithValidation(
 								if (typeof currentParent === "object" && currentParent !== null && !Array.isArray(currentParent)) {
 									// Merge parent, but preserve properties already explicitly set
 									for (const [key, value] of Object.entries(parentInInput1)) {
-										const childPath = `${parentPath}/${key}`;
+										const childPath = `${parentPath}${joinJsonPointer([key])}`;
 										if (!explicitlySetProperties.has(childPath)) {
 											(currentParent as Record<string, unknown>)[key] = value;
 										}
@@ -690,9 +731,9 @@ export function buildResultContentWithValidation(
 					pathToApply = arrayPath;
 				} else {
 					// For nested properties, merge parent object but preserve explicitly set properties
-					const pathSegments = conflictPath.split("/").filter(Boolean);
+					const pathSegments = parseJsonPointer(conflictPath) ?? [];
 					if (pathSegments.length > 1) {
-						const parentPath = `/${pathSegments.slice(0, -1).join("/")}`;
+						const parentPath = joinJsonPointer(pathSegments.slice(0, -1));
 						// Only merge parent if we haven't merged it yet
 						if (!mergedParents.has(parentPath)) {
 							const parentInInput2 = getValueAtPath(input2Data as Record<string, unknown>, parentPath);
@@ -701,7 +742,7 @@ export function buildResultContentWithValidation(
 								if (typeof currentParent === "object" && currentParent !== null && !Array.isArray(currentParent)) {
 									// Merge parent, but preserve properties already explicitly set
 									for (const [key, value] of Object.entries(parentInInput2)) {
-										const childPath = `${parentPath}/${key}`;
+										const childPath = `${parentPath}${joinJsonPointer([key])}`;
 										if (!explicitlySetProperties.has(childPath)) {
 											(currentParent as Record<string, unknown>)[key] = value;
 										}
@@ -786,7 +827,7 @@ export function buildResultContentWithValidation(
 		// Add a general error issue
 		conflictIssues.push({
 			conflictId: "validation-error",
-			conflictPath: "/",
+			conflictPath: "",
 			type: "error",
 			message: validationError,
 			startLine: 1,

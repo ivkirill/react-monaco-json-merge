@@ -1,46 +1,35 @@
 import isEqual from "fast-deep-equal";
 import sortKeys from "sort-keys";
 
+import { getChild, parseJsonPointer } from "./jsonPointer";
+
+/** Legacy dot/bracket syntax still accepted by getValueAtPath: "user.name", "items[1].type" */
+const parseLegacySegments = (path: string): string[] =>
+	path.replace(/^\//, "").replace(/\[/g, ".").replace(/\]/g, "").split(/[./#]/).filter(Boolean);
+
+const resolveSegments = (root: unknown, segments: readonly string[]): unknown =>
+	segments.reduce<unknown>((current, segment) => getChild(current, segment), root);
+
+/** Paths written in legacy dot/bracket style; they never mean a valid RFC 6901 pointer on their own */
+const LEGACY_SYNTAX_PATTERN = /[.[\]]/;
+
 /**
- * Get value at a path in an object
- * Supports JSON Pointer format: "/path/to/value" or "/array/0/item"
+ * Get value at a path in an object.
+ * RFC 6901 is authoritative. Only when a pointer misses and the path uses legacy dot/bracket
+ * syntax ("/user.settings/theme", "items[1].type") is the legacy form tried.
  */
 export const getValueAtPath = <T = unknown>(obj: Record<string, unknown> | undefined, path: string): T | undefined => {
 	if (!obj) return undefined;
 
-	// Normalize path to array of keys
-	const normalizedPath = path
-		.replace(/^\//, "") // remove leading slash
-		.replace(/\[/g, ".") // convert [0] to .0
-		.replace(/\]/g, "") // remove ]
-		.split(/[./#]/) // split by dot, slash, or hash
-		.filter(Boolean); // remove empty strings
-
-	let current: unknown = obj;
-
-	for (const key of normalizedPath) {
-		if (!current || typeof current !== "object") {
-			return undefined;
-		}
-
-		// Handle arrays with numeric indices
-		if (Array.isArray(current)) {
-			const index = Number.parseInt(key, 10);
-			if (Number.isNaN(index) || index < 0 || index >= current.length) {
-				return undefined;
-			}
-			current = current[index];
-		}
-		// Handle objects
-		else if (key in current) {
-			current = (current as Record<string, unknown>)[key];
-		}
-		// Property doesn't exist
-		else {
-			return undefined;
+	const pointerSegments = parseJsonPointer(path);
+	if (pointerSegments !== null) {
+		const pointerValue = resolveSegments(obj, pointerSegments);
+		if (pointerValue !== undefined || !LEGACY_SYNTAX_PATTERN.test(path)) {
+			return pointerValue as T | undefined;
 		}
 	}
-	return current as T;
+
+	return resolveSegments(obj, parseLegacySegments(path)) as T | undefined;
 };
 
 export { isEqual, sortKeys };

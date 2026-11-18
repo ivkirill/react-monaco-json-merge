@@ -235,7 +235,7 @@ describe("diffMerge - smartMergeValues", () => {
 		const obj1 = { name: "Alice", age: 30 };
 		const obj2 = { name: "Bob", age: 30 };
 
-		const result = smartMergeValues(obj1, obj2, schema, "/");
+		const result = smartMergeValues(obj1, obj2, schema, "");
 
 		expect(result).toBeDefined();
 	});
@@ -256,7 +256,7 @@ describe("diffMerge - smartMergeValues", () => {
 		const obj1 = { user: { name: "Alice" } };
 		const obj2 = { user: { name: "Bob" } };
 
-		const result = smartMergeValues(obj1, obj2, schema, "/");
+		const result = smartMergeValues(obj1, obj2, schema, "");
 
 		expect(result).toBeDefined();
 	});

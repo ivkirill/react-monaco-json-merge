@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getSampleData } from "../../data/sampleData";
 import { ConflictType, InputState } from "../../types";
+import { getValueAtPath } from "../helpers";
 import { computeDiffsJsonPatch } from "../jsonPatchDiff";
 
 /**
@@ -307,28 +308,3 @@ describe("Editor Rendering Integration", () => {
 });
 
 // Helper function for testing
-function getValueAtPath(obj: Record<string, unknown>, path: string): unknown {
-	if (!obj || !path) return undefined;
-
-	const segments = path.replace(/^\//, "").split("/").filter(Boolean);
-
-	let current: unknown = obj;
-	for (const segment of segments) {
-		if (current === null || typeof current !== "object") {
-			return undefined;
-		}
-
-		if (Array.isArray(current)) {
-			const index = Number.parseInt(segment, 10);
-			if (Number.isNaN(index) || index < 0 || index >= current.length) {
-				return undefined;
-			}
-			current = current[index];
-		} else if (segment in current) {
-			current = (current as Record<string, unknown>)[segment];
-		} else {
-			return undefined;
-		}
-	}
-	return current;
-}

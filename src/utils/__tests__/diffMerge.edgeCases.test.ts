@@ -9,28 +9,36 @@ import {
 } from "../diffMerge";
 
 describe("diffMerge - setValueAtPath edge cases", () => {
-	it("should handle root path assignment with valid objects", () => {
+	it("should merge into root for the empty pointer", () => {
 		const obj = { a: 1, b: 2 };
 		const value = { c: 3, d: 4 };
 
-		setValueAtPath(obj, "/", value);
+		setValueAtPath(obj, "", value);
 
 		// Object.assign merges properties, so we expect all properties
 		expect(obj).toEqual({ a: 1, b: 2, c: 3, d: 4 });
+	});
+
+	it('should write the empty-string key for "/" (RFC 6901)', () => {
+		const obj: Record<string, unknown> = { a: 1 };
+
+		setValueAtPath(obj, "/", { c: 3 });
+
+		expect(obj).toEqual({ a: 1, "": { c: 3 } });
 	});
 
 	it("should throw error when assigning non-object to root", () => {
 		const obj = { a: 1 };
 		const value = "string";
 
-		expect(() => setValueAtPath(obj, "/", value)).toThrow("Cannot assign root value");
+		expect(() => setValueAtPath(obj, "", value)).toThrow("Cannot assign root value");
 	});
 
 	it("should throw error when assigning array to root object", () => {
 		const obj = { a: 1 };
 		const value = [1, 2, 3];
 
-		expect(() => setValueAtPath(obj, "/", value)).toThrow("Cannot assign root value");
+		expect(() => setValueAtPath(obj, "", value)).toThrow("Cannot assign root value");
 	});
 
 	it("should throw error when path expects array but gets object", () => {
@@ -104,7 +112,7 @@ describe("diffMerge - smartMergeValues edge cases", () => {
 			additionalProperties: false,
 		};
 
-		const result = smartMergeValues(value1, value2, schema, "/");
+		const result = smartMergeValues(value1, value2, schema, "");
 
 		expect(result).toBeNull();
 	});
@@ -122,7 +130,7 @@ describe("diffMerge - smartMergeValues edge cases", () => {
 			},
 		};
 
-		const result = smartMergeValues(value1, value2, schema, "/");
+		const result = smartMergeValues(value1, value2, schema, "");
 
 		expect(result).toEqual({ a: 1, b: "test" });
 	});

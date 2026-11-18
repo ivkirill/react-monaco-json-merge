@@ -104,9 +104,9 @@ describe("helpers.ts - Utility Functions", () => {
 				expect(result).toEqual(testObj);
 			});
 
-			it('should handle root path "/"', () => {
+			it('should treat "/" as the empty-string key, not the root', () => {
 				const result = getValueAtPath(testObj, "/");
-				expect(result).toEqual(testObj);
+				expect(result).toBeUndefined();
 			});
 		});
 

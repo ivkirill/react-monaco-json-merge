@@ -1,8 +1,9 @@
 import { compare, type Operation as JsonPatchOperation } from "fast-json-patch";
-import { findNodeAtLocation, parseTree } from "jsonc-parser";
+import { parseTree } from "jsonc-parser";
 import type { JSONSchema } from "../types";
 import { ConflictType, InputState, type ModifiedBaseRange } from "../types";
 import { getValueAtPath, isEqual, sortKeys } from "./helpers";
+import { findNodeByPointer, firstSegmentPointer, hasOwnKey, joinJsonPointer, parseArrayIndex, parseJsonPointer } from "./jsonPointer";
 import { chooseSubschemaSync, getSchemaVariants, getSubschemaKeyword, hasSchemaVariants } from "./schema";
 
 /**
@@ -70,17 +71,12 @@ export function getNodeLines(text: string, path: string): { start: number; end: 
 			return { start: 1, end: 1 };
 		}
 
-		// Convert path segments to proper types (numbers for array indices, strings for object keys)
-		const pathSegments = path
-			.split("/")
-			.filter(Boolean)
-			.map((segment) => {
-				// Check if segment is a numeric array index
-				const numericValue = Number.parseInt(segment, 10);
-				return !Number.isNaN(numericValue) && String(numericValue) === segment ? numericValue : segment;
-			});
+		const pathSegments = parseJsonPointer(path);
+		if (pathSegments === null) {
+			return { start: 1, end: 1 };
+		}
 
-		const node = pathSegments.length === 0 ? root : findNodeAtLocation(root, pathSegments);
+		const node = findNodeByPointer(root, pathSegments);
 
 		if (!node) {
 			return { start: 1, end: 1 };
@@ -119,10 +115,7 @@ function groupPatchesByRootPath(
 	const pathGroups = new Map<string, { patches1: JsonPatchOperation[]; patches2: JsonPatchOperation[] }>();
 
 	// Helper to get root path (first segment)
-	const getRootPath = (path: string): string => {
-		const segments = path.split("/").filter(Boolean);
-		return segments.length > 0 ? `/${segments[0]}` : "/";
-	};
+	const getRootPath = (path: string): string => firstSegmentPointer(path);
 
 	// Group patches1
 	for (const patch of patches1) {
@@ -351,11 +344,11 @@ function groupPatchesWithSchema(
 	// Helper: Check if a path is a child of a potential oneOf object
 	const getOneOfObjectPath = (patchPath: string, schema?: JSONSchema): string | null => {
 		if (!schema) return null;
-		const segments = patchPath.split("/").filter(Boolean);
+		const segments = parseJsonPointer(patchPath) ?? [];
 		if (segments.length < 2) return null; // Need at least object/property
 
 		// Check if parent object (e.g., /payment for /payment/type) has oneOf schema
-		const parentPath = `/${segments[0]}`;
+		const parentPath = joinJsonPointer(segments.slice(0, 1));
 		const parentSchema = getSchemaAtPath(schema, parentPath);
 		if (parentSchema && hasSchemaVariants(parentSchema)) {
 			return parentPath;
@@ -471,24 +464,26 @@ export function getSchemaAtPath(schema: JSONSchema | undefined, path: string, da
 		return null;
 	}
 
-	const segments = path.split("/").filter(Boolean);
+	const segments = parseJsonPointer(path);
+	if (segments === null) {
+		return null;
+	}
 	if (segments.length === 0) {
 		return schema;
 	}
 
 	let currentSchema: JSONSchema | null = schema;
-	let currentPath = "";
 
 	for (let i = 0; i < segments.length; i++) {
 		const segment = segments[i];
-		const numericIndex = Number.parseInt(segment, 10);
-		const isArrayIndex = !Number.isNaN(numericIndex) && String(numericIndex) === segment;
+		const currentPath = joinJsonPointer(segments.slice(0, i));
+		const numericIndex = parseArrayIndex(segment);
 
 		// Handle oneOf/anyOf/allOf before navigating using shared utilities
 		if (currentSchema && hasSchemaVariants(currentSchema)) {
 			const variants = getSchemaVariants(currentSchema);
 			const keyword = getSubschemaKeyword(currentSchema);
-			const currentData = data ? getValueAtPath(data as Record<string, unknown>, currentPath || "/") : undefined;
+			const currentData = data ? getValueAtPath(data as Record<string, unknown>, currentPath) : undefined;
 
 			if (variants && variants.length > 0) {
 				if (currentData !== undefined) {
@@ -514,8 +509,17 @@ export function getSchemaAtPath(schema: JSONSchema | undefined, path: string, da
 			return null;
 		}
 
-		// Navigate to next segment
-		if (isArrayIndex) {
+		// Navigate to next segment. A declared property wins over a numeric key, so an object
+		// property named "200" (common in OpenAPI responses) does not fall into the items branch.
+		const propertyMap: Record<string, JSONSchema> | undefined =
+			typeof currentSchema.properties === "object" && currentSchema.properties !== null && !Array.isArray(currentSchema.properties)
+				? (currentSchema.properties as Record<string, JSONSchema>)
+				: undefined;
+		const propertySchema: JSONSchema | undefined = propertyMap && hasOwnKey(propertyMap, segment) ? propertyMap[segment] : undefined;
+
+		if (propertySchema) {
+			currentSchema = propertySchema;
+		} else if (numericIndex !== null) {
 			// Array index - use items schema
 			if (currentSchema.items) {
 				if (Array.isArray(currentSchema.items)) {
@@ -531,20 +535,12 @@ export function getSchemaAtPath(schema: JSONSchema | undefined, path: string, da
 				return null; // No items schema defined
 			}
 		} else {
-			// Object property
-			if (currentSchema.properties && typeof currentSchema.properties === "object" && !Array.isArray(currentSchema.properties)) {
-				const properties = currentSchema.properties as Record<string, JSONSchema>;
-				currentSchema = properties[segment] || null;
-			} else {
-				return null; // No properties schema defined
-			}
+			return null; // Property not declared in schema
 		}
 
 		if (!currentSchema) {
 			return null;
 		}
-
-		currentPath = currentPath ? `${currentPath}/${segment}` : `/${segment}`;
 	}
 
 	return currentSchema;
@@ -820,15 +816,15 @@ export function analyzeConflicts(base: unknown, input1: unknown, input2: unknown
 			objectPath = groupingKey.split("#")[0];
 		} else {
 			// Extract parent path: "/payment/number" -> "/payment"
-			const pathSegments = groupingKey.split("/").filter(Boolean);
+			const pathSegments = parseJsonPointer(groupingKey) ?? [];
 			if (pathSegments.length > 1) {
-				objectPath = `/${pathSegments[0]}`;
+				objectPath = joinJsonPointer(pathSegments.slice(0, 1));
 			}
 		}
 
 		// Check if groupingKey itself is an object path (no sub-properties in patches)
 		const allPatchesAreForSameObject = [...patches1, ...patches2].every((p) => {
-			const patchObjectPath = p.path.split("/").slice(0, 2).join("/") || `/${p.path.split("/")[1]}`;
+			const patchObjectPath = firstSegmentPointer(p.path);
 			return patchObjectPath === objectPath;
 		});
 
@@ -1174,8 +1170,7 @@ export function analyzeTwoWayConflicts(input1: unknown, input2: unknown, schema?
 	// Process non-array patches (simple properties)
 	const propertyGroups = new Map<string, JsonPatchOperation[]>();
 	for (const patch of nonArrayPatches) {
-		const segments = patch.path.split("/").filter(Boolean);
-		const rootPath = segments.length > 0 ? `/${segments[0]}` : "/";
+		const rootPath = firstSegmentPointer(patch.path);
 
 		if (!propertyGroups.has(rootPath)) {
 			propertyGroups.set(rootPath, []);

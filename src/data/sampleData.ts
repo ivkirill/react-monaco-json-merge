@@ -19,6 +19,12 @@ import type { JSONSchema } from "../types";
  */
 const sampleData = {
 	base: {
+		// Root-level RFC 6901 cases: numeric object key, escaped slash, empty-string key
+		responses: {
+			"200": { description: "ok" },
+		},
+		"a/b": 1,
+		"": "empty-base",
 		user: {
 			id: 1,
 			name: "John Doe",
@@ -71,6 +77,13 @@ const sampleData = {
 		},
 	},
 	theirs: {
+		responses: {
+			"200": { description: "ok (theirs)" },
+			"201": { description: "created" },
+		},
+		"a/b": 2,
+		"": "empty-theirs",
+		flags: ["theirs-only"],
 		user: {
 			id: 1,
 			name: "John Doe",
@@ -128,6 +141,11 @@ const sampleData = {
 		},
 	},
 	ours: {
+		responses: {
+			"200": { description: "ok (ours)" },
+		},
+		"a/b": 1,
+		"": "empty-ours",
 		user: {
 			id: 1,
 			name: "John Smith", // Changed name
