@@ -1,6 +1,8 @@
 import isEqual from "fast-deep-equal";
 import sortKeys from "sort-keys";
 
+import { type JsonPointerSegment, parseJsonPointerSegments, parseLegacyPathSegments, usesLegacyPathSyntax } from "./jsonPointer";
+
 /**
  * Get value at a path in an object
  * Supports JSON Pointer format: "/path/to/value" or "/array/0/item"
@@ -8,13 +10,13 @@ import sortKeys from "sort-keys";
 export const getValueAtPath = <T = unknown>(obj: Record<string, unknown> | undefined, path: string): T | undefined => {
 	if (!obj) return undefined;
 
-	// Normalize path to array of keys
-	const normalizedPath = path
-		.replace(/^\//, "") // remove leading slash
-		.replace(/\[/g, ".") // convert [0] to .0
-		.replace(/\]/g, "") // remove ]
-		.split(/[./#]/) // split by dot, slash, or hash
-		.filter(Boolean); // remove empty strings
+	if (!path || path === "/") {
+		return obj as T;
+	}
+
+	const normalizedPath: JsonPointerSegment[] = usesLegacyPathSyntax(path)
+		? parseLegacyPathSegments(path)
+		: parseJsonPointerSegments(path);
 
 	let current: unknown = obj;
 
@@ -23,20 +25,14 @@ export const getValueAtPath = <T = unknown>(obj: Record<string, unknown> | undef
 			return undefined;
 		}
 
-		// Handle arrays with numeric indices
-		if (Array.isArray(current)) {
-			const index = Number.parseInt(key, 10);
-			if (Number.isNaN(index) || index < 0 || index >= current.length) {
+		if (typeof key === "number") {
+			if (!Array.isArray(current) || key < 0 || key >= current.length) {
 				return undefined;
 			}
-			current = current[index];
-		}
-		// Handle objects
-		else if (key in current) {
+			current = current[key];
+		} else if (key in current) {
 			current = (current as Record<string, unknown>)[key];
-		}
-		// Property doesn't exist
-		else {
+		} else {
 			return undefined;
 		}
 	}
