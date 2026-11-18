@@ -2,6 +2,7 @@ import { findNodeAtLocation, parseTree } from "jsonc-parser";
 import { ConflictType, InputState, type JSONSchema, type ModifiedBaseRange } from "../types";
 import { getValueAtPath } from "./helpers";
 import { getSchemaAtPath } from "./jsonPatchDiff";
+import { parseJsonPointerSegments } from "./jsonPointer";
 
 /**
  * Represents a single line change with detailed information
@@ -320,21 +321,17 @@ export function setValueAtPath(obj: unknown, path: string, value: unknown): void
 		throw new Error(`Cannot assign root value: expected object, got ${typeof value}`);
 	}
 
-	const pathSegments = path.split("/").filter((s) => s !== "");
+	const pathSegments = parseJsonPointerSegments(path);
 	let current: Record<string, unknown> | unknown[] = obj as Record<string, unknown> | unknown[];
 
 	for (let i = 0; i < pathSegments.length - 1; i++) {
 		const segment = pathSegments[i];
-		// Check if segment is numeric (array index)
-		const numericIndex = Number.parseInt(segment, 10);
-		if (!Number.isNaN(numericIndex) && String(numericIndex) === segment) {
-			// Array index
+		if (typeof segment === "number") {
 			if (!Array.isArray(current)) {
 				throw new Error(`Path ${path}: segment ${segment} expects array but got ${typeof current}`);
 			}
-			current = current[numericIndex] as Record<string, unknown> | unknown[];
+			current = current[segment] as Record<string, unknown> | unknown[];
 		} else {
-			// Object key
 			if (!current || typeof current !== "object" || Array.isArray(current)) {
 				throw new Error(`Path ${path}: segment ${segment} expects object but got ${typeof current}`);
 			}
@@ -347,15 +344,12 @@ export function setValueAtPath(obj: unknown, path: string, value: unknown): void
 	}
 
 	const lastSegment = pathSegments[pathSegments.length - 1];
-	const lastNumeric = Number.parseInt(lastSegment, 10);
-	if (!Number.isNaN(lastNumeric) && String(lastNumeric) === lastSegment) {
-		// Setting array element
+	if (typeof lastSegment === "number") {
 		if (!Array.isArray(current)) {
 			throw new Error(`Path ${path}: last segment expects array but got ${typeof current}`);
 		}
-		current[lastNumeric] = value;
+		current[lastSegment] = value;
 	} else {
-		// Setting object property
 		if (!current || typeof current !== "object" || Array.isArray(current)) {
 			throw new Error(`Path ${path}: last segment expects object but got ${typeof current}`);
 		}
@@ -374,15 +368,7 @@ export function findLinesForPath(jsonContent: string, path: string): { startLine
 		const tree = parseTree(jsonContent);
 		if (!tree) return null;
 
-		// Navigate to the path
-		const segments = path
-			.split("/")
-			.filter((s) => s !== "")
-			.map((segment) => {
-				// Check if segment is a numeric array index
-				const numericValue = Number.parseInt(segment, 10);
-				return !Number.isNaN(numericValue) && String(numericValue) === segment ? numericValue : segment;
-			});
+		const segments = parseJsonPointerSegments(path);
 		const node = findNodeAtLocation(tree, segments);
 
 		if (!node) return null;

@@ -3,6 +3,7 @@ import { findNodeAtLocation, parseTree } from "jsonc-parser";
 import type { JSONSchema } from "../types";
 import { ConflictType, InputState, type ModifiedBaseRange } from "../types";
 import { getValueAtPath, isEqual, sortKeys } from "./helpers";
+import { joinJsonPointer, parseJsonPointerSegments } from "./jsonPointer";
 import { chooseSubschemaSync, getSchemaVariants, getSubschemaKeyword, hasSchemaVariants } from "./schema";
 
 /**
@@ -70,16 +71,7 @@ export function getNodeLines(text: string, path: string): { start: number; end: 
 			return { start: 1, end: 1 };
 		}
 
-		// Convert path segments to proper types (numbers for array indices, strings for object keys)
-		const pathSegments = path
-			.split("/")
-			.filter(Boolean)
-			.map((segment) => {
-				// Check if segment is a numeric array index
-				const numericValue = Number.parseInt(segment, 10);
-				return !Number.isNaN(numericValue) && String(numericValue) === segment ? numericValue : segment;
-			});
-
+		const pathSegments = parseJsonPointerSegments(path);
 		const node = pathSegments.length === 0 ? root : findNodeAtLocation(root, pathSegments);
 
 		if (!node) {
@@ -471,7 +463,7 @@ export function getSchemaAtPath(schema: JSONSchema | undefined, path: string, da
 		return null;
 	}
 
-	const segments = path.split("/").filter(Boolean);
+	const segments = parseJsonPointerSegments(path);
 	if (segments.length === 0) {
 		return schema;
 	}
@@ -481,8 +473,9 @@ export function getSchemaAtPath(schema: JSONSchema | undefined, path: string, da
 
 	for (let i = 0; i < segments.length; i++) {
 		const segment = segments[i];
-		const numericIndex = Number.parseInt(segment, 10);
-		const isArrayIndex = !Number.isNaN(numericIndex) && String(numericIndex) === segment;
+		const isArrayIndex = typeof segment === "number";
+		const numericIndex = isArrayIndex ? segment : Number.NaN;
+		const propertyKey = isArrayIndex ? "" : segment;
 
 		// Handle oneOf/anyOf/allOf before navigating using shared utilities
 		if (currentSchema && hasSchemaVariants(currentSchema)) {
@@ -534,7 +527,7 @@ export function getSchemaAtPath(schema: JSONSchema | undefined, path: string, da
 			// Object property
 			if (currentSchema.properties && typeof currentSchema.properties === "object" && !Array.isArray(currentSchema.properties)) {
 				const properties = currentSchema.properties as Record<string, JSONSchema>;
-				currentSchema = properties[segment] || null;
+				currentSchema = properties[propertyKey] || null;
 			} else {
 				return null; // No properties schema defined
 			}
@@ -544,7 +537,7 @@ export function getSchemaAtPath(schema: JSONSchema | undefined, path: string, da
 			return null;
 		}
 
-		currentPath = currentPath ? `${currentPath}/${segment}` : `/${segment}`;
+		currentPath = joinJsonPointer(segments.slice(0, i + 1));
 	}
 
 	return currentSchema;
